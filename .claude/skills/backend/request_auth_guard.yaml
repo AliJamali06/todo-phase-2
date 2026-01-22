@@ -1,0 +1,116 @@
+# Skill Definition: request_auth_guard
+# Group: Backend
+
+skill_id: request_auth_guard
+name: Request Auth Guard
+group: backend
+version: 1.0.0
+
+purpose: |
+  Enables implementation of authentication and authorization guards
+  for FastAPI endpoints. This skill protects routes, validates
+  permissions, and ensures only authenticated/authorized users
+  can access protected resources.
+
+tasks:
+  - Implement route-level authentication guards
+  - Create role-based access control (RBAC)
+  - Design permission-based authorization
+  - Implement resource ownership validation
+  - Create API key authentication
+  - Handle authentication failures gracefully
+  - Implement rate limiting per user
+  - Design multi-tenant isolation
+  - Log authentication/authorization events
+  - Test security boundaries
+
+agents:
+  - backend_agent
+  - auth_agent
+  - architect_agent
+
+dependencies:
+  - dependency_injection
+  - jwt_verification_logic
+
+artifacts:
+  inputs:
+    - Authentication requirements
+    - Authorization rules
+    - JWT configuration
+  outputs:
+    - Guard dependencies
+    - Authorization middleware
+    - Security documentation
+
+guard_patterns:
+  authenticated_user:
+    description: Requires valid JWT token
+    implementation: |
+      async def require_auth(
+          current_user: User = Depends(get_current_user)
+      ) -> User:
+          return current_user
+
+      @router.get("/protected")
+      async def protected_route(user: User = Depends(require_auth)):
+          return {"user": user.email}
+
+  resource_owner:
+    description: Validates user owns the resource
+    implementation: |
+      async def get_owned_todo(
+          todo_id: uuid.UUID,
+          db: AsyncSession = Depends(get_db),
+          current_user: User = Depends(get_current_user)
+      ) -> Todo:
+          todo = await get_todo(db, todo_id)
+          if not todo or todo.user_id != current_user.id:
+              raise HTTPException(404, "Todo not found")
+          return todo
+
+  role_required:
+    description: Requires specific user role
+    implementation: |
+      def require_role(required_role: str):
+          async def guard(user: User = Depends(get_current_user)):
+              if user.role != required_role:
+                  raise HTTPException(403, "Insufficient permissions")
+              return user
+          return guard
+
+      @router.delete("/admin/users/{id}")
+      async def delete_user(user: User = Depends(require_role("admin"))):
+          ...
+
+todo_app_guards:
+  public_routes:
+    - POST /auth/login
+    - POST /auth/register
+    - GET /health
+
+  authenticated_routes:
+    - All /api/todos/* endpoints
+    - All /api/categories/* endpoints
+    - GET /api/users/me
+
+  owner_validation:
+    - Todos: user can only access own todos
+    - Categories: user can only access own categories
+
+security_headers:
+  - Authorization: Bearer <token>
+  - X-Request-ID: For tracing
+
+error_responses:
+  401:
+    description: Unauthorized - Invalid or missing token
+    body: {"detail": "Not authenticated"}
+
+  403:
+    description: Forbidden - Insufficient permissions
+    body: {"detail": "Not enough permissions"}
+
+  404:
+    description: Not found - Resource doesn't exist or not owned
+    body: {"detail": "Resource not found"}

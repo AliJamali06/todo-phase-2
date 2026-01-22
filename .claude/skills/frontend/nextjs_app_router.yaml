@@ -1,0 +1,169 @@
+# Skill Definition: nextjs_app_router
+# Group: Frontend
+
+skill_id: nextjs_app_router
+name: Next.js App Router
+group: frontend
+version: 1.0.0
+
+purpose: |
+  Enables implementation of routing and navigation using
+  Next.js 16 App Router. This skill covers file-based routing,
+  dynamic routes, route groups, layouts, loading states,
+  and error boundaries.
+
+tasks:
+  - Design application route structure
+  - Implement file-based routing
+  - Create dynamic route segments
+  - Design and implement layouts
+  - Create loading.tsx for streaming
+  - Implement error.tsx boundaries
+  - Use route groups for organization
+  - Implement parallel routes (if needed)
+  - Create intercepting routes (if needed)
+  - Configure route metadata and SEO
+
+agents:
+  - frontend_agent
+  - architect_agent
+
+dependencies: []
+
+artifacts:
+  inputs:
+    - Application structure requirements
+    - Page/feature specifications
+  outputs:
+    - Route structure (app directory)
+    - Layout components
+    - Page components
+
+todo_app_routes:
+  structure: |
+    app/
+    ├── (auth)/
+    │   ├── login/
+    │   │   └── page.tsx
+    │   ├── register/
+    │   │   └── page.tsx
+    │   └── layout.tsx
+    ├── (app)/
+    │   ├── dashboard/
+    │   │   └── page.tsx
+    │   ├── todos/
+    │   │   ├── page.tsx
+    │   │   ├── [id]/
+    │   │   │   └── page.tsx
+    │   │   └── new/
+    │   │       └── page.tsx
+    │   ├── categories/
+    │   │   └── page.tsx
+    │   ├── settings/
+    │   │   └── page.tsx
+    │   └── layout.tsx
+    ├── api/
+    │   └── auth/
+    │       └── [...all]/
+    │           └── route.ts
+    ├── layout.tsx
+    ├── page.tsx
+    └── not-found.tsx
+
+routing_patterns:
+  layout:
+    purpose: Shared UI for route segments
+    implementation: |
+      // app/(app)/layout.tsx
+      import { Sidebar } from "@/components/sidebar";
+      import { Header } from "@/components/header";
+
+      export default function AppLayout({
+        children
+      }: {
+        children: React.ReactNode
+      }) {
+        return (
+          <div className="flex h-screen">
+            <Sidebar />
+            <div className="flex-1 flex flex-col">
+              <Header />
+              <main className="flex-1 overflow-auto p-6">
+                {children}
+              </main>
+            </div>
+          </div>
+        );
+      }
+
+  dynamic_route:
+    purpose: Routes with parameters
+    implementation: |
+      // app/(app)/todos/[id]/page.tsx
+      interface TodoPageProps {
+        params: Promise<{ id: string }>;
+      }
+
+      export default async function TodoPage({ params }: TodoPageProps) {
+        const { id } = await params;
+        const todo = await getTodo(id);
+
+        return <TodoDetail todo={todo} />;
+      }
+
+  loading:
+    purpose: Loading UI during data fetch
+    implementation: |
+      // app/(app)/todos/loading.tsx
+      export default function Loading() {
+        return <TodoListSkeleton />;
+      }
+
+  error:
+    purpose: Error handling boundary
+    implementation: |
+      // app/(app)/todos/error.tsx
+      "use client";
+
+      export default function Error({
+        error,
+        reset
+      }: {
+        error: Error;
+        reset: () => void;
+      }) {
+        return (
+          <div>
+            <h2>Something went wrong!</h2>
+            <button onClick={reset}>Try again</button>
+          </div>
+        );
+      }
+
+navigation:
+  link_component: |
+    import Link from "next/link";
+
+    <Link href="/todos">View Todos</Link>
+    <Link href={`/todos/${todo.id}`}>View Details</Link>
+
+  programmatic: |
+    import { useRouter } from "next/navigation";
+
+    const router = useRouter();
+    router.push("/todos");
+    router.replace("/login");
+    router.back();
+
+metadata:
+  static: |
+    export const metadata = {
+      title: "Todo App",
+      description: "Manage your tasks efficiently"
+    };
+
+  dynamic: |
+    export async function generateMetadata({ params }) {
+      const todo = await getTodo(params.id);
+      return { title: todo.title };
+    }

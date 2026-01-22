@@ -1,0 +1,87 @@
+# Skill Definition: sqlmodel_models
+# Group: Database
+
+skill_id: sqlmodel_models
+name: SQLModel Models
+group: database
+version: 1.0.0
+
+purpose: |
+  Enables creation and management of SQLModel ORM models that
+  map to PostgreSQL tables. This skill combines SQLAlchemy's
+  ORM capabilities with Pydantic's validation for type-safe
+  database interactions in FastAPI applications.
+
+tasks:
+  - Define SQLModel table classes
+  - Create Pydantic-compatible field definitions
+  - Implement model validation rules
+  - Define relationships between models
+  - Create read/create/update schemas
+  - Implement custom validators
+  - Handle optional and nullable fields
+  - Design inheritance hierarchies
+  - Create model factories for testing
+  - Document model schemas
+
+agents:
+  - database_agent
+  - backend_agent
+
+dependencies:
+  - postgres_schema_design
+
+artifacts:
+  inputs:
+    - Database schema design
+    - specs/<feature>/spec.md
+  outputs:
+    - SQLModel class definitions
+    - Pydantic schemas for API
+    - Model documentation
+
+model_patterns:
+  base_model:
+    description: Common fields for all models
+    fields:
+      - id: UUID with default_factory
+      - created_at: datetime with default
+      - updated_at: datetime with onupdate
+
+  table_model:
+    description: Database table representation
+    inherits: SQLModel with table=True
+    example: |
+      class Todo(SQLModel, table=True):
+          id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+          title: str = Field(max_length=255)
+          user_id: uuid.UUID = Field(foreign_key="users.id")
+
+  schema_models:
+    create: Fields for creating new records
+    read: Fields returned from API
+    update: Optional fields for updates
+
+todo_app_models:
+  User:
+    table: users
+    fields: [id, email, name, created_at, updated_at]
+    relationships: [todos, categories]
+
+  Todo:
+    table: todos
+    fields: [id, user_id, title, description, completed, due_date, priority]
+    relationships: [user, categories]
+
+  Category:
+    table: categories
+    fields: [id, user_id, name, color]
+    relationships: [user, todos]
+
+best_practices:
+  - Use Field() for validation constraints
+  - Separate table models from API schemas
+  - Use Optional[] for nullable fields
+  - Define __tablename__ explicitly
+  - Use relationship() for associations
+  - Implement __repr__ for debugging

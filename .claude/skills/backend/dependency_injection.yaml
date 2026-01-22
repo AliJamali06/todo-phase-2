@@ -1,0 +1,104 @@
+# Skill Definition: dependency_injection
+# Group: Backend
+
+skill_id: dependency_injection
+name: Dependency Injection
+group: backend
+version: 1.0.0
+
+purpose: |
+  Enables implementation of FastAPI's dependency injection system
+  for managing shared resources, authentication, database sessions,
+  and cross-cutting concerns. This skill provides reusable
+  dependencies and clean separation of concerns.
+
+tasks:
+  - Create database session dependencies
+  - Implement authentication dependencies
+  - Design repository dependencies
+  - Create configuration dependencies
+  - Implement caching dependencies
+  - Design scoped dependencies (request, session)
+  - Handle dependency overrides for testing
+  - Create factory dependencies
+  - Implement cleanup/shutdown dependencies
+  - Document dependency graphs
+
+agents:
+  - backend_agent
+  - architect_agent
+
+dependencies:
+  - fastapi_routing
+  - neon_connection_setup
+
+artifacts:
+  inputs:
+    - Resource requirements
+    - Authentication requirements
+  outputs:
+    - Dependency modules
+    - Dependency documentation
+
+core_dependencies:
+  database_session:
+    description: Provides database session per request
+    implementation: |
+      async def get_db() -> AsyncGenerator[AsyncSession, None]:
+          async with async_session() as session:
+              try:
+                  yield session
+                  await session.commit()
+              except Exception:
+                  await session.rollback()
+                  raise
+
+  current_user:
+    description: Extracts and validates current user
+    implementation: |
+      async def get_current_user(
+          token: str = Depends(oauth2_scheme),
+          db: AsyncSession = Depends(get_db)
+      ) -> User:
+          payload = verify_jwt(token)
+          user = await get_user_by_id(db, payload["sub"])
+          if not user:
+              raise HTTPException(401, "User not found")
+          return user
+
+  pagination:
+    description: Common pagination parameters
+    implementation: |
+      def get_pagination(
+          skip: int = Query(0, ge=0),
+          limit: int = Query(20, ge=1, le=100)
+      ) -> dict:
+          return {"skip": skip, "limit": limit}
+
+dependency_patterns:
+  simple:
+    use_case: Stateless utility functions
+    example: get_pagination
+
+  generator:
+    use_case: Resource lifecycle management
+    example: get_db (setup/teardown)
+
+  class_based:
+    use_case: Configurable dependencies
+    example: |
+      class Paginator:
+          def __init__(self, max_limit: int = 100):
+              self.max_limit = max_limit
+
+          def __call__(self, limit: int = 20) -> int:
+              return min(limit, self.max_limit)
+
+  cached:
+    use_case: Expensive computations
+    example: "@lru_cache() config loader"
+
+testing:
+  override_pattern: |
+    app.dependency_overrides[get_db] = get_test_db
+    app.dependency_overrides[get_current_user] = get_mock_user

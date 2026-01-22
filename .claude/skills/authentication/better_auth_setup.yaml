@@ -1,0 +1,114 @@
+# Skill Definition: better_auth_setup
+# Group: Authentication
+
+skill_id: better_auth_setup
+name: Better Auth Setup
+group: authentication
+version: 1.0.0
+
+purpose: |
+  Enables setup and configuration of Better Auth library for
+  authentication in the Next.js frontend. This skill covers
+  initial configuration, provider setup, database adapter
+  configuration, and integration with the application.
+
+tasks:
+  - Install and configure Better Auth
+  - Set up authentication providers (email/password, OAuth)
+  - Configure database adapter for Neon PostgreSQL
+  - Set up authentication API routes
+  - Configure session handling
+  - Implement sign-up and sign-in flows
+  - Set up email verification (if needed)
+  - Configure password reset flow
+  - Integrate with Next.js middleware
+  - Document authentication setup
+
+agents:
+  - auth_agent
+  - frontend_agent
+  - architect_agent
+
+dependencies: []
+
+artifacts:
+  inputs:
+    - Authentication requirements
+    - Database connection config
+  outputs:
+    - Better Auth configuration
+    - Auth API routes
+    - Auth client setup
+
+setup_structure:
+  config_file:
+    path: lib/auth.ts
+    implementation: |
+      import { betterAuth } from "better-auth";
+      import { Pool } from "@neondatabase/serverless";
+
+      export const auth = betterAuth({
+        database: new Pool({
+          connectionString: process.env.DATABASE_URL
+        }),
+        emailAndPassword: {
+          enabled: true,
+          requireEmailVerification: false
+        },
+        session: {
+          expiresIn: 60 * 60 * 24 * 7, // 7 days
+          updateAge: 60 * 60 * 24 // 1 day
+        },
+        plugins: []  // JWT plugin added separately
+      });
+
+  api_route:
+    path: app/api/auth/[...all]/route.ts
+    implementation: |
+      import { auth } from "@/lib/auth";
+      import { toNextJsHandler } from "better-auth/next-js";
+
+      export const { GET, POST } = toNextJsHandler(auth);
+
+  client:
+    path: lib/auth-client.ts
+    implementation: |
+      import { createAuthClient } from "better-auth/react";
+
+      export const authClient = createAuthClient({
+        baseURL: process.env.NEXT_PUBLIC_APP_URL
+      });
+
+      export const {
+        signIn,
+        signUp,
+        signOut,
+        useSession
+      } = authClient;
+
+environment_variables:
+  required:
+    - DATABASE_URL: Neon connection string
+    - BETTER_AUTH_SECRET: Random secret for signing
+    - NEXT_PUBLIC_APP_URL: Application base URL
+
+  optional:
+    - BETTER_AUTH_URL: Auth service URL (if different)
+
+database_tables:
+  auto_created:
+    - user: Core user table
+    - session: Session storage
+    - account: OAuth accounts (if used)
+    - verification: Email verification tokens
+
+integration_checklist:
+  - [ ] Install better-auth package
+  - [ ] Create auth configuration file
+  - [ ] Set up API catch-all route
+  - [ ] Create auth client for React
+  - [ ] Configure environment variables
+  - [ ] Run database migrations
+  - [ ] Test sign-up flow
+  - [ ] Test sign-in flow
+  - [ ] Test sign-out flow

@@ -1,0 +1,75 @@
+# Agents Registry Index
+# Phase II Full-Stack Todo App
+# Version: 1.0.0
+
+metadata:
+  project: todo-phase-2
+  stack:
+    frontend: Next.js 16 App Router + Tailwind
+    backend: FastAPI + SQLModel
+    database: Neon PostgreSQL
+    auth: Better Auth with JWT
+    spec: Spec-Kit Plus
+  created: 2026-01-23
+  version: 1.0.0
+
+categories:
+  main:
+    description: Orchestration and high-level coordination
+    agents:
+      - phase2-orchestrator
+
+  backend:
+    description: FastAPI backend development
+    agents:
+      - api-engineer
+      - orm-engineer
+      - db-architect
+
+  auth:
+    description: Authentication and authorization
+    agents:
+      - auth-specialist
+      - jwt-bridge-agent
+
+  frontend:
+    description: Next.js frontend development
+    agents:
+      - ui-engineer
+      - api-client-agent
+
+  testing:
+    description: Testing and quality assurance
+    agents:
+      - integration-tester
+
+hierarchy:
+  root: phase2-orchestrator
+  tree:
+    phase2-orchestrator:
+      - api-engineer
+      - orm-engineer
+      - db-architect
+      - auth-specialist
+      - jwt-bridge-agent
+      - ui-engineer
+      - api-client-agent
+      - integration-tester
+
+total_agents: 9
+
+skill_coverage:
+  planning:
+    - phase2-orchestrator
+  database:
+    - db-architect
+    - orm-engineer
+  backend:
+    - api-engineer
+    - orm-engineer
+  authentication:
+    - auth-specialist
+    - jwt-bridge-agent
+  frontend:
+    - ui-engineer
+    - api-client-agent

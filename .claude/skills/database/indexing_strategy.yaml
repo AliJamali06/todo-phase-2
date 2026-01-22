@@ -1,0 +1,80 @@
+# Skill Definition: indexing_strategy
+# Group: Database
+
+skill_id: indexing_strategy
+name: Indexing Strategy
+group: database
+version: 1.0.0
+
+purpose: |
+  Enables design and implementation of database indexing strategies
+  to optimize query performance. This skill covers index selection,
+  composite indexes, partial indexes, and PostgreSQL-specific
+  indexing features.
+
+tasks:
+  - Analyze query patterns for index opportunities
+  - Design primary key indexes
+  - Create foreign key indexes for joins
+  - Design composite indexes for multi-column queries
+  - Implement partial indexes for filtered queries
+  - Create unique indexes for constraints
+  - Design indexes for sorting and ordering
+  - Analyze and optimize index usage
+  - Monitor index performance
+  - Document indexing decisions
+
+agents:
+  - database_agent
+  - backend_agent
+  - architect_agent
+
+dependencies:
+  - postgres_schema_design
+
+artifacts:
+  inputs:
+    - Database schema
+    - Query patterns from application
+    - Performance requirements
+  outputs:
+    - Index definitions
+    - Index migration files
+    - Performance analysis reports
+
+todo_app_indexes:
+  essential:
+    - idx_todos_user_id: "todos(user_id) - User's todos lookup"
+    - idx_todos_user_completed: "todos(user_id, completed) - Filter by status"
+    - idx_todos_due_date: "todos(due_date) WHERE due_date IS NOT NULL"
+    - idx_categories_user_id: "categories(user_id)"
+    - idx_users_email: "users(email) - Login lookup"
+
+  performance:
+    - idx_todos_user_created: "todos(user_id, created_at DESC) - Recent todos"
+    - idx_todos_user_priority: "todos(user_id, priority) WHERE NOT completed"
+
+index_types:
+  btree:
+    use_case: Equality and range queries
+    default: true
+
+  hash:
+    use_case: Equality only, faster than btree
+    limitation: No range queries
+
+  gin:
+    use_case: Full-text search, JSONB
+    consideration: Slower writes
+
+  partial:
+    use_case: Subset of rows
+    example: "WHERE NOT completed"
+
+guidelines:
+  - Index foreign keys used in joins
+  - Consider query selectivity
+  - Avoid over-indexing (write penalty)
+  - Use partial indexes for common filters
+  - Monitor unused indexes
+  - Test index effectiveness with EXPLAIN ANALYZE

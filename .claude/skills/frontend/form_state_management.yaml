@@ -1,0 +1,239 @@
+# Skill Definition: form_state_management
+# Group: Frontend
+
+skill_id: form_state_management
+name: Form State Management
+group: frontend
+version: 1.0.0
+
+purpose: |
+  Enables implementation of form handling, validation, and
+  state management in the Next.js application. This skill
+  covers form libraries, validation patterns, server actions,
+  and optimistic updates for a smooth user experience.
+
+tasks:
+  - Implement controlled form components
+  - Create form validation logic
+  - Handle form submission states
+  - Implement server actions for mutations
+  - Create optimistic UI updates
+  - Handle form errors and display
+  - Implement multi-step forms (if needed)
+  - Create reusable form components
+  - Handle file uploads in forms
+  - Test form behavior and validation
+
+agents:
+  - frontend_agent
+
+dependencies:
+  - server_client_components
+  - tailwind_layout
+
+artifacts:
+  inputs:
+    - Form requirements
+    - Validation rules
+    - API specifications
+  outputs:
+    - Form components
+    - Validation schemas
+    - Server actions
+
+form_patterns:
+  basic_controlled:
+    description: Simple controlled form with useState
+    implementation: |
+      "use client";
+
+      import { useState } from "react";
+      import { Button } from "@/components/ui/button";
+      import { Input } from "@/components/ui/input";
+
+      export function CreateTodoForm({ onSubmit }: { onSubmit: (data: TodoCreate) => Promise<void> }) {
+        const [title, setTitle] = useState("");
+        const [isSubmitting, setIsSubmitting] = useState(false);
+        const [error, setError] = useState<string | null>(null);
+
+        const handleSubmit = async (e: React.FormEvent) => {
+          e.preventDefault();
+          setError(null);
+          setIsSubmitting(true);
+
+          try {
+            await onSubmit({ title });
+            setTitle("");
+          } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to create todo");
+          } finally {
+            setIsSubmitting(false);
+          }
+        };
+
+        return (
+          <form onSubmit={handleSubmit} className="flex gap-2">
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="What needs to be done?"
+              disabled={isSubmitting}
+              required
+            />
+            <Button type="submit" disabled={isSubmitting || !title.trim()}>
+              {isSubmitting ? "Adding..." : "Add"}
+            </Button>
+            {error && <p className="text-red-500 text-sm">{error}</p>}
+          </form>
+        );
+      }
+
+  server_action:
+    description: Form with Next.js server actions
+    implementation: |
+      // actions/todo-actions.ts
+      "use server";
+
+      import { revalidatePath } from "next/cache";
+      import { auth } from "@/lib/auth";
+      import { headers } from "next/headers";
+
+      export async function createTodo(formData: FormData) {
+        const session = await auth.api.getSession({
+          headers: await headers()
+        });
+
+        if (!session) {
+          return { error: "Not authenticated" };
+        }
+
+        const title = formData.get("title") as string;
+
+        if (!title?.trim()) {
+          return { error: "Title is required" };
+        }
+
+        const response = await fetch(`${process.env.BACKEND_URL}/api/todos`, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${session.token}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ title })
+        });
+
+        if (!response.ok) {
+          return { error: "Failed to create todo" };
+        }
+
+        revalidatePath("/todos");
+        return { success: true };
+      }
+
+      // components/create-todo-form.tsx
+      "use client";
+
+      import { useActionState } from "react";
+      import { createTodo } from "@/actions/todo-actions";
+
+      export function CreateTodoForm() {
+        const [state, action, pending] = useActionState(createTodo, null);
+
+        return (
+          <form action={action} className="flex gap-2">
+            <Input name="title" placeholder="What needs to be done?" disabled={pending} />
+            <Button type="submit" disabled={pending}>
+              {pending ? "Adding..." : "Add"}
+            </Button>
+            {state?.error && (
+              <p className="text-red-500 text-sm">{state.error}</p>
+            )}
+          </form>
+        );
+      }
+
+  optimistic_update:
+    description: Optimistic UI with useOptimistic
+    implementation: |
+      "use client";
+
+      import { useOptimistic, useTransition } from "react";
+
+      export function TodoList({ initialTodos }: { initialTodos: Todo[] }) {
+        const [isPending, startTransition] = useTransition();
+        const [optimisticTodos, addOptimisticTodo] = useOptimistic(
+          initialTodos,
+          (state, newTodo: Todo) => [...state, newTodo]
+        );
+
+        const handleCreate = async (title: string) => {
+          const tempTodo: Todo = {
+            id: `temp-${Date.now()}`,
+            title,
+            completed: false,
+            createdAt: new Date().toISOString()
+          };
+
+          startTransition(async () => {
+            addOptimisticTodo(tempTodo);
+            await createTodo({ title });
+          });
+        };
+
+        return (
+          <div>
+            <CreateTodoForm onSubmit={handleCreate} />
+            <ul>
+              {optimisticTodos.map((todo) => (
+                <TodoItem
+                  key={todo.id}
+                  todo={todo}
+                  isPending={todo.id.startsWith("temp-")}
+                />
+              ))}
+            </ul>
+          </div>
+        );
+      }
+
+validation:
+  client_side: |
+    // Simple validation
+    const errors: Record<string, string> = {};
+
+    if (!title.trim()) {
+      errors.title = "Title is required";
+    } else if (title.length > 255) {
+      errors.title = "Title must be less than 255 characters";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      return;
+    }
+
+  with_zod: |
+    import { z } from "zod";
+
+    const todoSchema = z.object({
+      title: z.string().min(1, "Title is required").max(255),
+      description: z.string().optional(),
+      dueDate: z.string().datetime().optional(),
+      priority: z.enum(["low", "medium", "high"]).default("medium")
+    });
+
+    type TodoFormData = z.infer<typeof todoSchema>;
+
+    // In form handler
+    const result = todoSchema.safeParse(formData);
+    if (!result.success) {
+      setErrors(result.error.flatten().fieldErrors);
+      return;
+    }
+
+form_states:
+  - idle: Form ready for input
+  - submitting: Form being submitted
+  - success: Submission succeeded
+  - error: Submission failed with errors
+  - validating: Client-side validation in progress

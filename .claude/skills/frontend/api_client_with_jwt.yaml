@@ -1,0 +1,344 @@
+# Skill Definition: api_client_with_jwt
+# Group: Frontend
+
+skill_id: api_client_with_jwt
+name: API Client with JWT
+group: frontend
+version: 1.0.0
+
+purpose: |
+  Enables implementation of a type-safe API client for
+  communicating with the FastAPI backend. This skill covers
+  client creation, JWT token handling, request/response
+  typing, and error handling for all API operations.
+
+tasks:
+  - Create typed API client class
+  - Implement JWT token injection
+  - Handle API errors consistently
+  - Create typed request/response interfaces
+  - Implement request interceptors
+  - Handle token refresh on 401
+  - Create API hooks for React
+  - Implement request caching strategies
+  - Handle loading and error states
+  - Test API client behavior
+
+agents:
+  - frontend_agent
+
+dependencies:
+  - token_forwarding
+  - server_client_components
+
+artifacts:
+  inputs:
+    - API specifications
+    - Response types from backend
+    - Authentication setup
+  outputs:
+    - API client module
+    - Type definitions
+    - API hooks
+
+api_client_implementation:
+  base_client:
+    path: lib/api/client.ts
+    implementation: |
+      import { authClient } from "@/lib/auth-client";
+
+      export class ApiError extends Error {
+        constructor(
+          public status: number,
+          public code: string,
+          message: string,
+          public details?: unknown
+        ) {
+          super(message);
+          this.name = "ApiError";
+        }
+      }
+
+      class ApiClient {
+        private baseUrl: string;
+
+        constructor(baseUrl: string) {
+          this.baseUrl = baseUrl;
+        }
+
+        private async getToken(): Promise<string | null> {
+          const { data: session } = await authClient.getSession();
+          return session?.token ?? null;
+        }
+
+        private async request<T>(
+          endpoint: string,
+          options: RequestInit = {}
+        ): Promise<T> {
+          const token = await this.getToken();
+
+          const response = await fetch(`${this.baseUrl}${endpoint}`, {
+            ...options,
+            headers: {
+              "Content-Type": "application/json",
+              ...(token && { Authorization: `Bearer ${token}` }),
+              ...options.headers
+            }
+          });
+
+          if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new ApiError(
+              response.status,
+              error.error_code ?? "UNKNOWN_ERROR",
+              error.message ?? "An error occurred",
+              error.details
+            );
+          }
+
+          if (response.status === 204) {
+            return undefined as T;
+          }
+
+          return response.json();
+        }
+
+        async get<T>(endpoint: string): Promise<T> {
+          return this.request<T>(endpoint, { method: "GET" });
+        }
+
+        async post<T>(endpoint: string, data?: unknown): Promise<T> {
+          return this.request<T>(endpoint, {
+            method: "POST",
+            body: data ? JSON.stringify(data) : undefined
+          });
+        }
+
+        async put<T>(endpoint: string, data: unknown): Promise<T> {
+          return this.request<T>(endpoint, {
+            method: "PUT",
+            body: JSON.stringify(data)
+          });
+        }
+
+        async patch<T>(endpoint: string, data: unknown): Promise<T> {
+          return this.request<T>(endpoint, {
+            method: "PATCH",
+            body: JSON.stringify(data)
+          });
+        }
+
+        async delete<T>(endpoint: string): Promise<T> {
+          return this.request<T>(endpoint, { method: "DELETE" });
+        }
+      }
+
+      export const api = new ApiClient(
+        process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"
+      );
+
+  typed_endpoints:
+    path: lib/api/todos.ts
+    implementation: |
+      import { api, ApiError } from "./client";
+
+      // Types matching backend schemas
+      export interface Todo {
+        id: string;
+        title: string;
+        description: string | null;
+        completed: boolean;
+        dueDate: string | null;
+        priority: "low" | "medium" | "high";
+        createdAt: string;
+        updatedAt: string;
+      }
+
+      export interface TodoCreate {
+        title: string;
+        description?: string;
+        dueDate?: string;
+        priority?: "low" | "medium" | "high";
+      }
+
+      export interface TodoUpdate {
+        title?: string;
+        description?: string;
+        completed?: boolean;
+        dueDate?: string;
+        priority?: "low" | "medium" | "high";
+      }
+
+      export interface PaginatedResponse<T> {
+        items: T[];
+        total: number;
+        page: number;
+        pageSize: number;
+      }
+
+      export const todosApi = {
+        list: (params?: { page?: number; completed?: boolean }) =>
+          api.get<PaginatedResponse<Todo>>(
+            `/api/todos?${new URLSearchParams(params as Record<string, string>)}`
+          ),
+
+        get: (id: string) =>
+          api.get<Todo>(`/api/todos/${id}`),
+
+        create: (data: TodoCreate) =>
+          api.post<Todo>("/api/todos", data),
+
+        update: (id: string, data: TodoUpdate) =>
+          api.put<Todo>(`/api/todos/${id}`, data),
+
+        delete: (id: string) =>
+          api.delete<void>(`/api/todos/${id}`),
+
+        toggleComplete: (id: string) =>
+          api.patch<Todo>(`/api/todos/${id}/complete`, {})
+      };
+
+  react_hooks:
+    path: lib/api/hooks/use-todos.ts
+    implementation: |
+      "use client";
+
+      import { useState, useEffect, useCallback } from "react";
+      import { todosApi, Todo, TodoCreate, TodoUpdate } from "../todos";
+      import { ApiError } from "../client";
+
+      interface UseTodosReturn {
+        todos: Todo[];
+        isLoading: boolean;
+        error: ApiError | null;
+        createTodo: (data: TodoCreate) => Promise<Todo>;
+        updateTodo: (id: string, data: TodoUpdate) => Promise<Todo>;
+        deleteTodo: (id: string) => Promise<void>;
+        toggleTodo: (id: string) => Promise<Todo>;
+        refresh: () => Promise<void>;
+      }
+
+      export function useTodos(): UseTodosReturn {
+        const [todos, setTodos] = useState<Todo[]>([]);
+        const [isLoading, setIsLoading] = useState(true);
+        const [error, setError] = useState<ApiError | null>(null);
+
+        const fetchTodos = useCallback(async () => {
+          try {
+            setIsLoading(true);
+            setError(null);
+            const response = await todosApi.list();
+            setTodos(response.items);
+          } catch (err) {
+            setError(err instanceof ApiError ? err : new ApiError(500, "UNKNOWN", "Failed to fetch"));
+          } finally {
+            setIsLoading(false);
+          }
+        }, []);
+
+        useEffect(() => {
+          fetchTodos();
+        }, [fetchTodos]);
+
+        const createTodo = async (data: TodoCreate): Promise<Todo> => {
+          const todo = await todosApi.create(data);
+          setTodos((prev) => [todo, ...prev]);
+          return todo;
+        };
+
+        const updateTodo = async (id: string, data: TodoUpdate): Promise<Todo> => {
+          const updated = await todosApi.update(id, data);
+          setTodos((prev) => prev.map((t) => (t.id === id ? updated : t)));
+          return updated;
+        };
+
+        const deleteTodo = async (id: string): Promise<void> => {
+          await todosApi.delete(id);
+          setTodos((prev) => prev.filter((t) => t.id !== id));
+        };
+
+        const toggleTodo = async (id: string): Promise<Todo> => {
+          const updated = await todosApi.toggleComplete(id);
+          setTodos((prev) => prev.map((t) => (t.id === id ? updated : t)));
+          return updated;
+        };
+
+        return {
+          todos,
+          isLoading,
+          error,
+          createTodo,
+          updateTodo,
+          deleteTodo,
+          toggleTodo,
+          refresh: fetchTodos
+        };
+      }
+
+server_side_fetching:
+  implementation: |
+    // For Server Components - direct fetch without hooks
+    // lib/api/server.ts
+    import { auth } from "@/lib/auth";
+    import { headers } from "next/headers";
+
+    export async function serverFetch<T>(endpoint: string): Promise<T> {
+      const session = await auth.api.getSession({
+        headers: await headers()
+      });
+
+      if (!session?.token) {
+        throw new Error("Not authenticated");
+      }
+
+      const response = await fetch(
+        `${process.env.BACKEND_URL}${endpoint}`,
+        {
+          headers: {
+            Authorization: `Bearer ${session.token}`
+          },
+          cache: "no-store" // or configure caching as needed
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+
+      return response.json();
+    }
+
+    // Usage in Server Component
+    // app/(app)/todos/page.tsx
+    export default async function TodosPage() {
+      const { items: todos } = await serverFetch<PaginatedResponse<Todo>>("/api/todos");
+      return <TodoList todos={todos} />;
+    }
+
+error_handling:
+  patterns: |
+    // In components
+    if (error) {
+      if (error.status === 401) {
+        redirect("/login");
+      }
+      return <ErrorDisplay message={error.message} onRetry={refresh} />;
+    }
+
+    // Specific error codes
+    try {
+      await todosApi.create(data);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        switch (err.code) {
+          case "VALIDATION_ERROR":
+            setFieldErrors(err.details);
+            break;
+          case "TODO_NOT_FOUND":
+            toast.error("Todo no longer exists");
+            break;
+          default:
+            toast.error(err.message);
+        }
+      }
+    }

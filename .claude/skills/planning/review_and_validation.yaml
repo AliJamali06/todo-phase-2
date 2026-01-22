@@ -1,0 +1,80 @@
+# Skill Definition: review_and_validation
+# Group: Planning
+
+skill_id: review_and_validation
+name: Review and Validation
+group: planning
+version: 1.0.0
+
+purpose: |
+  Enables systematic review of artifacts, code, and implementations
+  against specifications and acceptance criteria. This skill
+  provides quality gates, validation checklists, and ensures
+  deliverables meet defined standards.
+
+tasks:
+  - Review code against spec requirements
+  - Validate task completion against acceptance criteria
+  - Cross-check artifacts for consistency (spec, plan, tasks)
+  - Perform security review of implementations
+  - Validate API contracts match implementations
+  - Review database migrations for safety
+  - Check test coverage meets requirements
+  - Validate error handling completeness
+  - Generate review reports and findings
+  - Approve or request changes on deliverables
+
+agents:
+  - reviewer_agent
+  - architect_agent
+  - coordinator_agent
+
+dependencies:
+  - spec_reader
+  - task_decomposition
+
+artifacts:
+  inputs:
+    - specs/<feature>/spec.md
+    - specs/<feature>/plan.md
+    - specs/<feature>/tasks.md
+    - Implementation code
+    - Test results
+  outputs:
+    - Review reports
+    - Validation checklists
+    - Approval/rejection decisions
+    - Remediation recommendations
+
+review_dimensions:
+  functional:
+    - Requirements coverage
+    - Acceptance criteria met
+    - Edge cases handled
+
+  technical:
+    - Code quality standards
+    - Performance requirements
+    - Security best practices
+
+  architectural:
+    - Design pattern adherence
+    - Separation of concerns
+    - API contract compliance
+
+  operational:
+    - Error handling
+    - Logging/observability
+    - Documentation
+
+validation_gates:
+  pre_implementation:
+    - Spec completeness
+    - Plan feasibility
+    - Task clarity
+
+  post_implementation:
+    - Tests passing
+    - Acceptance criteria verified
+    - No security vulnerabilities
+    - Documentation updated

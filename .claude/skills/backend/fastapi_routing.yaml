@@ -1,0 +1,97 @@
+# Skill Definition: fastapi_routing
+# Group: Backend
+
+skill_id: fastapi_routing
+name: FastAPI Routing
+group: backend
+version: 1.0.0
+
+purpose: |
+  Enables design and implementation of FastAPI route handlers
+  and API endpoints. This skill covers RESTful API design,
+  path operations, request/response models, and API organization
+  using routers.
+
+tasks:
+  - Design RESTful API endpoints
+  - Create FastAPI router modules
+  - Implement CRUD operations for resources
+  - Define path parameters and query parameters
+  - Configure request body validation
+  - Set up response models and status codes
+  - Implement API versioning
+  - Document endpoints with OpenAPI
+  - Organize routes by domain/feature
+  - Handle path operation dependencies
+
+agents:
+  - backend_agent
+  - architect_agent
+
+dependencies:
+  - sqlmodel_models
+
+artifacts:
+  inputs:
+    - specs/<feature>/spec.md
+    - API requirements
+    - SQLModel definitions
+  outputs:
+    - FastAPI router modules
+    - OpenAPI specification
+    - API documentation
+
+todo_app_routes:
+  todos:
+    prefix: /api/todos
+    operations:
+      - GET /: List user's todos
+      - POST /: Create new todo
+      - GET /{id}: Get todo by ID
+      - PUT /{id}: Update todo
+      - DELETE /{id}: Delete todo
+      - PATCH /{id}/complete: Toggle completion
+
+  categories:
+    prefix: /api/categories
+    operations:
+      - GET /: List user's categories
+      - POST /: Create category
+      - PUT /{id}: Update category
+      - DELETE /{id}: Delete category
+
+  users:
+    prefix: /api/users
+    operations:
+      - GET /me: Get current user
+      - PUT /me: Update profile
+
+route_patterns:
+  basic_crud:
+    example: |
+      router = APIRouter(prefix="/api/todos", tags=["todos"])
+
+      @router.get("/", response_model=list[TodoRead])
+      async def list_todos(
+          db: Session = Depends(get_db),
+          current_user: User = Depends(get_current_user)
+      ):
+          return get_user_todos(db, current_user.id)
+
+  path_params:
+    example: |
+      @router.get("/{todo_id}", response_model=TodoRead)
+      async def get_todo(
+          todo_id: uuid.UUID,
+          db: Session = Depends(get_db)
+      ):
+          ...
+
+best_practices:
+  - Use APIRouter for modular organization
+  - Define response_model for type safety
+  - Use Depends() for shared logic
+  - Document with docstrings for OpenAPI
+  - Use appropriate HTTP status codes
+  - Implement pagination for list endpoints
+  - Use tags for API grouping

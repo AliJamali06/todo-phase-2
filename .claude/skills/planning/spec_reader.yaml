@@ -1,0 +1,50 @@
+# Skill Definition: spec_reader
+# Group: Planning
+
+skill_id: spec_reader
+name: Specification Reader
+group: planning
+version: 1.0.0
+
+purpose: |
+  Enables reading, parsing, and interpreting specification documents
+  (spec.md files) to extract requirements, acceptance criteria,
+  constraints, and feature definitions. This skill provides the
+  foundation for understanding what needs to be built.
+
+tasks:
+  - Parse spec.md files and extract structured requirements
+  - Identify acceptance criteria from specifications
+  - Extract functional and non-functional requirements
+  - Map user stories to technical requirements
+  - Validate specification completeness
+  - Cross-reference requirements with existing implementations
+  - Generate requirement traceability matrices
+
+agents:
+  - architect_agent
+  - planner_agent
+  - reviewer_agent
+  - coordinator_agent
+
+dependencies: []
+
+artifacts:
+  inputs:
+    - specs/<feature>/spec.md
+    - .specify/templates/spec-template.md
+  outputs:
+    - Parsed requirement objects
+    - Requirement validation reports
+    - Traceability matrices
+
+context:
+  spec_kit_plus: true
+  file_patterns:
+    - "specs/**/spec.md"
+    - "specs/**/requirements.md"
+
+validation:
+  - Spec file must exist and be valid markdown
+  - Acceptance criteria must be extractable
+  - Requirements must have unique identifiers

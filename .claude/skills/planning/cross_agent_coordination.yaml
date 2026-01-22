@@ -1,0 +1,65 @@
+# Skill Definition: cross_agent_coordination
+# Group: Planning
+
+skill_id: cross_agent_coordination
+name: Cross-Agent Coordination
+group: planning
+version: 1.0.0
+
+purpose: |
+  Enables coordination and communication between multiple agents
+  working on different aspects of the system. This skill manages
+  handoffs, shared context, conflict resolution, and ensures
+  coherent system development across agent boundaries.
+
+tasks:
+  - Coordinate work between frontend and backend agents
+  - Manage API contract agreements between agents
+  - Handle handoffs when tasks span multiple domains
+  - Resolve conflicts in shared resources or interfaces
+  - Synchronize state across agent contexts
+  - Track progress across agent boundaries
+  - Facilitate integration points between components
+  - Manage shared artifacts (types, schemas, contracts)
+  - Escalate cross-cutting issues to architect
+
+agents:
+  - coordinator_agent
+  - architect_agent
+  - planner_agent
+
+dependencies:
+  - dependency_management
+  - task_decomposition
+
+artifacts:
+  inputs:
+    - specs/<feature>/tasks.md
+    - Agent execution logs
+    - Shared type definitions
+  outputs:
+    - Coordination logs
+    - Handoff documentation
+    - Integration checkpoints
+
+coordination_patterns:
+  api_contract:
+    description: Frontend and backend agree on API shape
+    participants: [frontend_agent, backend_agent]
+    artifact: OpenAPI spec or TypeScript types
+
+  schema_sync:
+    description: Database schema matches ORM models
+    participants: [database_agent, backend_agent]
+    artifact: SQLModel definitions
+
+  auth_flow:
+    description: Auth tokens flow correctly through stack
+    participants: [auth_agent, backend_agent, frontend_agent]
+    artifact: JWT verification chain
+
+escalation_triggers:
+  - Conflicting implementations detected
+  - Breaking API changes proposed
+  - Security concerns identified
+  - Performance requirements at risk

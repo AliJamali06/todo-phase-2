@@ -1,0 +1,71 @@
+# Skill Definition: neon_connection_setup
+# Group: Database
+
+skill_id: neon_connection_setup
+name: Neon Connection Setup
+group: database
+version: 1.0.0
+
+purpose: |
+  Enables configuration and management of Neon PostgreSQL
+  database connections. This skill handles connection strings,
+  pooling configuration, SSL settings, and environment-specific
+  database setup for the serverless PostgreSQL platform.
+
+tasks:
+  - Configure Neon database connection strings
+  - Set up connection pooling for serverless environments
+  - Configure SSL/TLS for secure connections
+  - Manage environment variables for database credentials
+  - Set up development vs production database branches
+  - Configure connection timeouts and retry logic
+  - Implement connection health checks
+  - Handle Neon-specific features (branching, scaling)
+  - Document connection configuration
+
+agents:
+  - database_agent
+  - backend_agent
+  - devops_agent
+
+dependencies: []
+
+artifacts:
+  inputs:
+    - .env.example
+    - Environment configuration
+  outputs:
+    - Database connection configuration
+    - .env templates with DATABASE_URL
+    - Connection pool settings
+
+configuration:
+  required_env_vars:
+    - DATABASE_URL: "postgresql://user:password@host/database?sslmode=require"
+    - DATABASE_URL_UNPOOLED: "For migrations"
+
+  connection_params:
+    sslmode: require
+    pool_size: 5
+    max_overflow: 10
+    pool_timeout: 30
+    pool_recycle: 1800
+
+neon_features:
+  branching:
+    description: Database branching for dev/preview environments
+    use_case: Feature branch databases
+
+  autoscaling:
+    description: Serverless compute scaling
+    use_case: Handle variable load
+
+  point_in_time_recovery:
+    description: Restore to any point in time
+    use_case: Data recovery
+
+security:
+  - Never commit credentials to version control
+  - Use environment variables for all secrets
+  - Enable SSL for all connections
+  - Use connection pooling for serverless

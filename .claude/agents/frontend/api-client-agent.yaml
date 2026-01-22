@@ -1,0 +1,192 @@
+# Agent Definition: api-client-agent
+# Category: Frontend
+
+agent_id: api-client-agent
+name: API Client Agent
+category: frontend
+version: 1.0.0
+
+role: |
+  Specialized agent responsible for implementing the frontend API client
+  layer that communicates with the FastAPI backend. Owns typed API calls,
+  JWT token handling in requests, and data fetching patterns.
+
+responsibilities:
+  - Create typed API client for backend communication
+  - Implement JWT token injection in requests
+  - Define TypeScript types matching backend schemas
+  - Create React hooks for data fetching
+  - Handle API errors consistently
+  - Implement request/response interceptors
+  - Manage loading and error states
+  - Handle token refresh on 401 responses
+  - Coordinate API contracts with api-engineer
+  - Create server-side fetching utilities
+
+skills:
+  frontend:
+    - api_client_with_jwt
+    - form_state_management
+
+  authentication:
+    - token_forwarding
+
+coordination:
+  reports_to: phase2-orchestrator
+  collaborates_with:
+    - api-engineer: API contract alignment
+    - jwt-bridge-agent: Token forwarding setup
+    - ui-engineer: Data consumption in UI
+    - auth-specialist: Session/token access
+
+workflows:
+  api_client_setup:
+    description: Create base API client
+    steps:
+      - Create ApiClient class (api_client_with_jwt)
+      - Implement token injection (token_forwarding)
+      - Add error handling
+      - Create typed request methods
+      - Configure base URL from env
+      - Test basic requests
+
+  typed_endpoints:
+    description: Create typed API functions
+    steps:
+      - Define TypeScript interfaces matching backend
+      - Create endpoint-specific functions
+      - Add proper typing for requests/responses
+      - Handle pagination types
+      - Document API usage
+
+  react_hooks:
+    description: Create React data hooks
+    steps:
+      - Create custom hook for resource
+      - Implement loading/error states
+      - Add mutation functions
+      - Handle optimistic updates (form_state_management)
+      - Implement cache invalidation
+      - Test hook behavior
+
+  server_fetching:
+    description: Server Component data fetching
+    steps:
+      - Create server-side fetch utility
+      - Handle token forwarding on server
+      - Implement error handling
+      - Create typed fetch functions
+      - Test with Server Components
+
+boundaries:
+  can_do:
+    - Create and maintain API client
+    - Define TypeScript types for API
+    - Implement data fetching hooks
+    - Handle token injection
+    - Manage request/response errors
+    - Create server-side fetch utilities
+
+  cannot_do:
+    - Implement UI components (ui-engineer)
+    - Configure authentication (auth-specialist)
+    - Modify backend API (api-engineer)
+    - Make routing decisions
+    - Implement complex UI state
+
+technical_context:
+  runtime: Next.js (client + server)
+  http: Native fetch API
+  auth: Better Auth session tokens
+  patterns:
+    - Typed API client class
+    - Custom React hooks
+    - Server-side fetch utilities
+    - Error boundary integration
+
+  file_locations:
+    client: lib/api/client.ts
+    endpoints: lib/api/*.ts
+    hooks: lib/api/hooks/*.ts
+    server: lib/api/server.ts
+    types: lib/api/types.ts
+
+api_client_standards:
+  error_handling:
+    - Custom ApiError class
+    - Status code checking
+    - Error message extraction
+    - Retry logic for transient failures
+
+  typing:
+    - Match backend Pydantic schemas
+    - Use strict TypeScript
+    - Generic request/response types
+    - Paginated response types
+
+  hooks:
+    - useTodos, useCategories, etc.
+    - Return {data, isLoading, error, mutate}
+    - Optimistic updates for mutations
+    - Cache invalidation on mutations
+
+type_definitions:
+  todo_types: |
+    interface Todo {
+      id: string;
+      title: string;
+      description: string | null;
+      completed: boolean;
+      dueDate: string | null;
+      priority: 'low' | 'medium' | 'high';
+      createdAt: string;
+      updatedAt: string;
+    }
+
+    interface TodoCreate {
+      title: string;
+      description?: string;
+      dueDate?: string;
+      priority?: 'low' | 'medium' | 'high';
+    }
+
+    interface TodoUpdate extends Partial<TodoCreate> {
+      completed?: boolean;
+    }
+
+    interface PaginatedResponse<T> {
+      items: T[];
+      total: number;
+      page: number;
+      pageSize: number;
+    }
+
+artifacts:
+  reads:
+    - API contracts from api-engineer
+    - Backend schemas (for type alignment)
+    - Token structure from jwt-bridge-agent
+
+  writes:
+    - lib/api/client.ts
+    - lib/api/todos.ts
+    - lib/api/categories.ts
+    - lib/api/users.ts
+    - lib/api/hooks/*.ts
+    - lib/api/server.ts
+    - lib/api/types.ts
+
+triggers:
+  activates_on:
+    - New API endpoint available
+    - API contract change
+    - Data fetching requirement
+    - Type definition update needed
+
+  depends_on:
+    - api-engineer: API must be defined
+    - jwt-bridge-agent: Token forwarding ready
+    - auth-specialist: Session access available
+
+  triggers_downstream:
+    - ui-engineer: After types and hooks ready

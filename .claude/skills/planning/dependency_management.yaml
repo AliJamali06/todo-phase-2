@@ -1,0 +1,64 @@
+# Skill Definition: dependency_management
+# Group: Planning
+
+skill_id: dependency_management
+name: Dependency Management
+group: planning
+version: 1.0.0
+
+purpose: |
+  Enables identification, tracking, and resolution of dependencies
+  between tasks, components, and external services. This skill
+  ensures proper ordering of work and identifies blocking
+  relationships that affect execution.
+
+tasks:
+  - Identify inter-task dependencies
+  - Create dependency graphs for task ordering
+  - Detect circular dependencies and resolve them
+  - Track external service dependencies (Neon, Better Auth)
+  - Manage package dependencies (Python, Node.js)
+  - Identify critical path through dependencies
+  - Flag blocking dependencies for prioritization
+  - Validate dependency versions and compatibility
+  - Document dependency rationale
+
+agents:
+  - planner_agent
+  - coordinator_agent
+  - architect_agent
+  - backend_agent
+  - frontend_agent
+
+dependencies:
+  - task_decomposition
+
+artifacts:
+  inputs:
+    - specs/<feature>/tasks.md
+    - package.json
+    - pyproject.toml / requirements.txt
+  outputs:
+    - Dependency graphs
+    - Critical path analysis
+    - Dependency reports
+
+external_dependencies:
+  database:
+    service: Neon PostgreSQL
+    type: managed
+  auth:
+    service: Better Auth
+    type: library
+  frontend:
+    framework: Next.js 16
+    styling: Tailwind CSS
+  backend:
+    framework: FastAPI
+    orm: SQLModel
+
+dependency_types:
+  - task_to_task: Order of execution
+  - component_to_component: Integration requirements
+  - package_to_package: Version compatibility
+  - service_to_service: External service requirements

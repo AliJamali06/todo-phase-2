@@ -1,0 +1,59 @@
+# Skill Definition: task_decomposition
+# Group: Planning
+
+skill_id: task_decomposition
+name: Task Decomposition
+group: planning
+version: 1.0.0
+
+purpose: |
+  Enables breaking down high-level features and plans into
+  granular, actionable, testable tasks. This skill ensures
+  tasks are properly sized, have clear acceptance criteria,
+  and can be executed independently where possible.
+
+tasks:
+  - Decompose features into implementation tasks
+  - Size tasks appropriately (small, testable units)
+  - Define clear acceptance criteria for each task
+  - Identify task prerequisites and blockers
+  - Create task hierarchies (epics -> stories -> tasks)
+  - Estimate relative complexity
+  - Assign task categories (frontend, backend, database, auth)
+  - Generate tasks.md from plan.md
+  - Ensure each task has test cases defined
+
+agents:
+  - planner_agent
+  - architect_agent
+  - coordinator_agent
+
+dependencies:
+  - spec_reader
+  - system_planning
+
+artifacts:
+  inputs:
+    - specs/<feature>/spec.md
+    - specs/<feature>/plan.md
+  outputs:
+    - specs/<feature>/tasks.md
+    - Task breakdown structures
+
+context:
+  task_template: .specify/templates/tasks-template.md
+
+task_criteria:
+  - Must be independently verifiable
+  - Must have explicit acceptance criteria
+  - Must reference relevant code paths
+  - Should be completable in a single session
+  - Must specify test cases
+
+categories:
+  - database
+  - backend
+  - authentication
+  - frontend
+  - integration
+  - documentation

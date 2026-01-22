@@ -1,0 +1,80 @@
+# Skill Definition: postgres_schema_design
+# Group: Database
+
+skill_id: postgres_schema_design
+name: PostgreSQL Schema Design
+group: database
+version: 1.0.0
+
+purpose: |
+  Enables design and implementation of PostgreSQL database schemas
+  optimized for the application's data model. This skill covers
+  table design, data types, constraints, and PostgreSQL-specific
+  features for the Todo application.
+
+tasks:
+  - Design normalized database schemas
+  - Define appropriate PostgreSQL data types
+  - Create primary and foreign key constraints
+  - Design CHECK and UNIQUE constraints
+  - Implement default values and sequences
+  - Create ENUM types where appropriate
+  - Design audit columns (created_at, updated_at)
+  - Plan schema migrations
+  - Document schema decisions
+  - Design for soft delete patterns
+
+agents:
+  - database_agent
+  - architect_agent
+  - backend_agent
+
+dependencies:
+  - neon_connection_setup
+
+artifacts:
+  inputs:
+    - specs/<feature>/spec.md
+    - Data model requirements
+  outputs:
+    - SQL schema definitions
+    - Migration files
+    - Schema documentation (ERD)
+
+todo_app_schema:
+  core_tables:
+    users:
+      - id: UUID PRIMARY KEY
+      - email: VARCHAR UNIQUE NOT NULL
+      - name: VARCHAR
+      - created_at: TIMESTAMPTZ
+      - updated_at: TIMESTAMPTZ
+
+    todos:
+      - id: UUID PRIMARY KEY
+      - user_id: UUID REFERENCES users
+      - title: VARCHAR NOT NULL
+      - description: TEXT
+      - completed: BOOLEAN DEFAULT false
+      - due_date: TIMESTAMPTZ
+      - priority: priority_enum
+      - created_at: TIMESTAMPTZ
+      - updated_at: TIMESTAMPTZ
+
+    categories:
+      - id: UUID PRIMARY KEY
+      - user_id: UUID REFERENCES users
+      - name: VARCHAR NOT NULL
+      - color: VARCHAR
+
+    todo_categories:
+      - todo_id: UUID REFERENCES todos
+      - category_id: UUID REFERENCES categories
+
+design_principles:
+  - Use UUIDs for primary keys (Neon compatible)
+  - Always include timestamp columns
+  - Normalize to 3NF minimum
+  - Use appropriate constraints
+  - Plan for soft deletes where needed
+  - Consider timezone-aware timestamps

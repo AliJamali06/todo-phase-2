@@ -1,0 +1,118 @@
+# Skill Definition: query_optimization
+# Group: Backend
+
+skill_id: query_optimization
+name: Query Optimization
+group: backend
+version: 1.0.0
+
+purpose: |
+  Enables optimization of database queries for performance
+  in the FastAPI/SQLModel application. This skill covers
+  eager loading, query batching, pagination, and avoiding
+  common performance pitfalls like N+1 queries.
+
+tasks:
+  - Identify and fix N+1 query problems
+  - Implement eager loading strategies
+  - Design efficient pagination queries
+  - Optimize complex joins and filters
+  - Implement query result caching
+  - Use database-level aggregations
+  - Profile and analyze slow queries
+  - Implement cursor-based pagination
+  - Batch related queries efficiently
+  - Monitor query performance metrics
+
+agents:
+  - backend_agent
+  - database_agent
+  - architect_agent
+
+dependencies:
+  - sqlmodel_models
+  - relational_mapping
+  - indexing_strategy
+
+artifacts:
+  inputs:
+    - Query patterns from application
+    - Performance requirements
+    - Database schema
+  outputs:
+    - Optimized query implementations
+    - Performance reports
+    - Caching strategies
+
+optimization_patterns:
+  eager_loading:
+    problem: N+1 queries when accessing relationships
+    solution: |
+      # Bad: N+1 queries
+      todos = session.exec(select(Todo)).all()
+      for todo in todos:
+          print(todo.categories)  # Query per todo
+
+      # Good: Eager loading
+      stmt = select(Todo).options(selectinload(Todo.categories))
+      todos = session.exec(stmt).all()
+
+  pagination:
+    offset_based: |
+      # Simple but slow for large offsets
+      stmt = select(Todo).offset(skip).limit(limit)
+
+    cursor_based: |
+      # Better for large datasets
+      stmt = (
+          select(Todo)
+          .where(Todo.created_at < cursor_timestamp)
+          .order_by(Todo.created_at.desc())
+          .limit(limit)
+      )
+
+  batching:
+    description: Batch multiple related queries
+    example: |
+      # Get todos and categories in two queries instead of N+1
+      todos = await get_user_todos(db, user_id)
+      todo_ids = [t.id for t in todos]
+      categories = await get_categories_for_todos(db, todo_ids)
+
+  aggregation:
+    description: Use database for counting/grouping
+    example: |
+      # Count at database level
+      stmt = (
+          select(func.count(Todo.id))
+          .where(Todo.user_id == user_id)
+          .where(Todo.completed == False)
+      )
+      incomplete_count = session.exec(stmt).one()
+
+query_analysis:
+  tools:
+    - EXPLAIN ANALYZE for query plans
+    - SQLAlchemy echo=True for logging
+    - Application-level query timing
+
+  metrics:
+    - Query execution time
+    - Number of queries per request
+    - Row counts examined vs returned
+
+caching_strategies:
+  response_cache:
+    use_case: Frequently accessed, rarely changed data
+    ttl: 60-300 seconds
+
+  query_cache:
+    use_case: Expensive aggregations
+    invalidation: On related writes
+
+common_antipatterns:
+  - Loading all columns when only few needed
+  - Not using indexes on filtered columns
+  - Fetching full objects for existence checks
+  - Not limiting results from unbounded queries
+  - Using ORM for bulk operations

@@ -1,0 +1,195 @@
+# Skill Definition: server_client_components
+# Group: Frontend
+
+skill_id: server_client_components
+name: Server & Client Components
+group: frontend
+version: 1.0.0
+
+purpose: |
+  Enables proper use of React Server Components (RSC) and
+  Client Components in Next.js 16. This skill covers component
+  boundaries, data fetching patterns, and when to use each
+  component type for optimal performance.
+
+tasks:
+  - Identify server vs client component requirements
+  - Implement data fetching in Server Components
+  - Create interactive Client Components
+  - Design component composition patterns
+  - Handle server-to-client data passing
+  - Implement streaming with Suspense
+  - Optimize component boundaries
+  - Handle client-side state in RSC apps
+  - Implement proper hydration patterns
+  - Test server/client component behavior
+
+agents:
+  - frontend_agent
+  - architect_agent
+
+dependencies:
+  - nextjs_app_router
+
+artifacts:
+  inputs:
+    - Component requirements
+    - Interactivity needs
+    - Data fetching patterns
+  outputs:
+    - Server Components
+    - Client Components
+    - Component composition patterns
+
+component_decision_tree:
+  use_server_component:
+    - Fetch data
+    - Access backend resources directly
+    - Keep sensitive info on server
+    - Reduce client JavaScript
+    - No interactivity needed
+
+  use_client_component:
+    - onClick, onChange handlers
+    - useState, useEffect hooks
+    - Browser APIs (localStorage, etc)
+    - Custom hooks with state
+    - Third-party client libraries
+
+patterns:
+  server_component:
+    description: Default, runs on server
+    implementation: |
+      // No "use client" directive - Server Component by default
+      // app/(app)/todos/page.tsx
+      import { auth } from "@/lib/auth";
+      import { headers } from "next/headers";
+      import { TodoList } from "@/components/todo-list";
+
+      export default async function TodosPage() {
+        const session = await auth.api.getSession({
+          headers: await headers()
+        });
+
+        const response = await fetch(
+          `${process.env.BACKEND_URL}/api/todos`,
+          {
+            headers: { Authorization: `Bearer ${session?.token}` },
+            cache: "no-store"
+          }
+        );
+
+        const todos = await response.json();
+
+        return (
+          <div>
+            <h1>Your Todos</h1>
+            <TodoList todos={todos} />
+          </div>
+        );
+      }
+
+  client_component:
+    description: Interactive component with "use client"
+    implementation: |
+      "use client";
+
+      // components/todo-item.tsx
+      import { useState } from "react";
+
+      interface TodoItemProps {
+        todo: Todo;
+        onToggle: (id: string) => void;
+        onDelete: (id: string) => void;
+      }
+
+      export function TodoItem({ todo, onToggle, onDelete }: TodoItemProps) {
+        const [isDeleting, setIsDeleting] = useState(false);
+
+        const handleDelete = async () => {
+          setIsDeleting(true);
+          await onDelete(todo.id);
+        };
+
+        return (
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={todo.completed}
+              onChange={() => onToggle(todo.id)}
+            />
+            <span>{todo.title}</span>
+            <button
+              onClick={handleDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </button>
+          </div>
+        );
+      }
+
+  composition:
+    description: Server wrapping Client components
+    implementation: |
+      // Server Component fetches, Client handles interaction
+      // app/(app)/todos/page.tsx (Server)
+      import { TodoListClient } from "@/components/todo-list-client";
+
+      export default async function TodosPage() {
+        const todos = await fetchTodos(); // Server-side fetch
+
+        return (
+          <div>
+            <h1>Your Todos</h1>
+            {/* Pass data to client component */}
+            <TodoListClient initialTodos={todos} />
+          </div>
+        );
+      }
+
+      // components/todo-list-client.tsx (Client)
+      "use client";
+
+      export function TodoListClient({ initialTodos }: { initialTodos: Todo[] }) {
+        const [todos, setTodos] = useState(initialTodos);
+
+        // Client-side mutations and optimistic updates
+        const handleToggle = async (id: string) => {
+          setTodos(prev => prev.map(t =>
+            t.id === id ? { ...t, completed: !t.completed } : t
+          ));
+          await toggleTodo(id);
+        };
+
+        return <TodoList todos={todos} onToggle={handleToggle} />;
+      }
+
+streaming:
+  suspense_boundary: |
+    import { Suspense } from "react";
+    import { TodoListSkeleton } from "@/components/skeletons";
+
+    export default function TodosPage() {
+      return (
+        <div>
+          <h1>Your Todos</h1>
+          <Suspense fallback={<TodoListSkeleton />}>
+            <TodoListAsync />
+          </Suspense>
+        </div>
+      );
+    }
+
+    async function TodoListAsync() {
+      const todos = await fetchTodos(); // Slow fetch
+      return <TodoList todos={todos} />;
+    }
+
+best_practices:
+  - Keep client components as small as possible
+  - Push "use client" down the component tree
+  - Don't pass functions from server to client
+  - Use server actions for mutations
+  - Prefer server components for data fetching
+  - Use composition for interactive + data patterns

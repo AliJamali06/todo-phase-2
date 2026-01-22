@@ -1,0 +1,199 @@
+# Skill Definition: token_forwarding
+# Group: Authentication
+
+skill_id: token_forwarding
+name: Token Forwarding
+group: authentication
+version: 1.0.0
+
+purpose: |
+  Enables forwarding of JWT tokens from the Next.js frontend
+  to the FastAPI backend for authenticated API requests.
+  This skill covers token extraction, header injection,
+  and handling token refresh scenarios.
+
+tasks:
+  - Extract JWT from session/storage
+  - Inject Authorization header in API requests
+  - Handle token expiration during requests
+  - Implement automatic token refresh
+  - Configure fetch/axios interceptors
+  - Handle 401 responses and retry
+  - Forward tokens in Server Components
+  - Forward tokens in Client Components
+  - Handle token forwarding in API routes
+  - Test token forwarding flow
+
+agents:
+  - frontend_agent
+  - auth_agent
+
+dependencies:
+  - jwt_plugin_configuration
+  - session_management
+
+artifacts:
+  inputs:
+    - JWT configuration
+    - API client requirements
+  outputs:
+    - API client with auth
+    - Token interceptors
+    - Server-side token utilities
+
+client_side_forwarding:
+  fetch_wrapper:
+    implementation: |
+      import { authClient } from "@/lib/auth-client";
+
+      export async function authFetch(
+        url: string,
+        options: RequestInit = {}
+      ): Promise<Response> {
+        const { data: session } = await authClient.getSession();
+
+        if (!session?.token) {
+          throw new Error("Not authenticated");
+        }
+
+        return fetch(url, {
+          ...options,
+          headers: {
+            ...options.headers,
+            "Authorization": `Bearer ${session.token}`,
+            "Content-Type": "application/json"
+          }
+        });
+      }
+
+  with_retry:
+    implementation: |
+      export async function authFetchWithRetry(
+        url: string,
+        options: RequestInit = {}
+      ): Promise<Response> {
+        let response = await authFetch(url, options);
+
+        if (response.status === 401) {
+          // Try to refresh token
+          const { data } = await authClient.refreshToken();
+          if (data?.token) {
+            response = await authFetch(url, options);
+          } else {
+            // Redirect to login
+            window.location.href = "/login";
+          }
+        }
+
+        return response;
+      }
+
+server_side_forwarding:
+  server_component:
+    implementation: |
+      import { auth } from "@/lib/auth";
+      import { headers } from "next/headers";
+
+      export async function ServerComponent() {
+        const session = await auth.api.getSession({
+          headers: await headers()
+        });
+
+        if (!session?.token) {
+          redirect("/login");
+        }
+
+        const response = await fetch(
+          `${process.env.BACKEND_URL}/api/todos`,
+          {
+            headers: {
+              "Authorization": `Bearer ${session.token}`
+            }
+          }
+        );
+
+        const todos = await response.json();
+        return <TodoList todos={todos} />;
+      }
+
+  api_route:
+    implementation: |
+      // app/api/proxy/[...path]/route.ts
+      import { auth } from "@/lib/auth";
+      import { headers } from "next/headers";
+      import { NextResponse } from "next/server";
+
+      export async function GET(request, { params }) {
+        const session = await auth.api.getSession({
+          headers: await headers()
+        });
+
+        if (!session?.token) {
+          return NextResponse.json(
+            { error: "Unauthorized" },
+            { status: 401 }
+          );
+        }
+
+        const backendUrl = `${process.env.BACKEND_URL}/${params.path.join("/")}`;
+
+        const response = await fetch(backendUrl, {
+          headers: {
+            "Authorization": `Bearer ${session.token}`
+          }
+        });
+
+        return NextResponse.json(await response.json());
+      }
+
+api_client_class:
+  implementation: |
+    class ApiClient {
+      private baseUrl: string;
+      private getToken: () => Promise<string | null>;
+
+      constructor(baseUrl: string, getToken: () => Promise<string | null>) {
+        this.baseUrl = baseUrl;
+        this.getToken = getToken;
+      }
+
+      private async request<T>(
+        endpoint: string,
+        options: RequestInit = {}
+      ): Promise<T> {
+        const token = await this.getToken();
+
+        const response = await fetch(`${this.baseUrl}${endpoint}`, {
+          ...options,
+          headers: {
+            "Content-Type": "application/json",
+            ...(token && { "Authorization": `Bearer ${token}` }),
+            ...options.headers
+          }
+        });
+
+        if (!response.ok) {
+          throw new ApiError(response.status, await response.json());
+        }
+
+        return response.json();
+      }
+
+      async get<T>(endpoint: string): Promise<T> {
+        return this.request<T>(endpoint);
+      }
+
+      async post<T>(endpoint: string, data: unknown): Promise<T> {
+        return this.request<T>(endpoint, {
+          method: "POST",
+          body: JSON.stringify(data)
+        });
+      }
+    }
+
+security_considerations:
+  - Never expose tokens in URLs
+  - Use HTTPS for all API calls
+  - Handle token expiration gracefully
+  - Clear tokens on logout
+  - Validate tokens haven't been tampered

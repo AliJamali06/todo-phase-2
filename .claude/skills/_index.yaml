@@ -1,0 +1,63 @@
+# Skills Registry Index
+# Phase II Full-Stack Todo App
+# Version: 1.0.0
+
+metadata:
+  project: todo-phase-2
+  stack:
+    frontend: Next.js 16 App Router + Tailwind
+    backend: FastAPI + SQLModel
+    database: Neon PostgreSQL
+    auth: Better Auth with JWT
+    spec: Spec-Kit Plus
+  created: 2026-01-23
+  version: 1.0.0
+
+groups:
+  planning:
+    description: Skills for project planning, decomposition, and coordination
+    skills:
+      - spec_reader
+      - system_planning
+      - task_decomposition
+      - dependency_management
+      - cross_agent_coordination
+      - review_and_validation
+
+  database:
+    description: Skills for database design, modeling, and optimization
+    skills:
+      - neon_connection_setup
+      - postgres_schema_design
+      - indexing_strategy
+      - sqlmodel_models
+      - relational_mapping
+
+  backend:
+    description: Skills for FastAPI backend development
+    skills:
+      - fastapi_routing
+      - dependency_injection
+      - request_auth_guard
+      - http_exception_handling
+      - query_optimization
+
+  authentication:
+    description: Skills for Better Auth and JWT authentication
+    skills:
+      - better_auth_setup
+      - jwt_plugin_configuration
+      - session_management
+      - token_forwarding
+      - jwt_verification_logic
+
+  frontend:
+    description: Skills for Next.js frontend development
+    skills:
+      - nextjs_app_router
+      - server_client_components
+      - tailwind_layout
+      - form_state_management
+      - api_client_with_jwt
+
+total_skills: 26

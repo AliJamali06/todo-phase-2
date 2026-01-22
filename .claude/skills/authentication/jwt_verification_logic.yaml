@@ -1,0 +1,177 @@
+# Skill Definition: jwt_verification_logic
+# Group: Authentication
+
+skill_id: jwt_verification_logic
+name: JWT Verification Logic
+group: authentication
+version: 1.0.0
+
+purpose: |
+  Enables verification and validation of JWT tokens on the
+  FastAPI backend. This skill covers token decoding, signature
+  verification, claims validation, and user extraction from
+  tokens for request authentication.
+
+tasks:
+  - Implement JWT decoding and verification
+  - Validate token signature with shared secret
+  - Check token expiration
+  - Extract user claims from token
+  - Validate required claims presence
+  - Handle invalid/malformed tokens
+  - Implement token validation caching
+  - Create FastAPI dependencies for JWT auth
+  - Log verification failures
+  - Test verification edge cases
+
+agents:
+  - backend_agent
+  - auth_agent
+  - architect_agent
+
+dependencies:
+  - jwt_plugin_configuration
+
+artifacts:
+  inputs:
+    - JWT secret configuration
+    - Token structure from Better Auth
+  outputs:
+    - JWT verification utilities
+    - FastAPI auth dependencies
+    - Token validation tests
+
+verification_implementation:
+  jwt_service:
+    path: app/core/security.py
+    implementation: |
+      import jwt
+      from datetime import datetime, timezone
+      from pydantic import BaseModel
+      from fastapi import HTTPException, status
+
+      class TokenPayload(BaseModel):
+          sub: str  # user_id
+          email: str
+          name: str | None = None
+          exp: int
+          iat: int
+
+      class JWTService:
+          def __init__(self, secret: str, algorithm: str = "HS256"):
+              self.secret = secret
+              self.algorithm = algorithm
+
+          def verify_token(self, token: str) -> TokenPayload:
+              try:
+                  payload = jwt.decode(
+                      token,
+                      self.secret,
+                      algorithms=[self.algorithm]
+                  )
+                  return TokenPayload(**payload)
+
+              except jwt.ExpiredSignatureError:
+                  raise HTTPException(
+                      status_code=status.HTTP_401_UNAUTHORIZED,
+                      detail="Token has expired"
+                  )
+              except jwt.InvalidTokenError as e:
+                  raise HTTPException(
+                      status_code=status.HTTP_401_UNAUTHORIZED,
+                      detail=f"Invalid token: {str(e)}"
+                  )
+
+          def is_token_expired(self, payload: TokenPayload) -> bool:
+              return datetime.now(timezone.utc).timestamp() > payload.exp
+
+fastapi_dependency:
+  oauth2_scheme:
+    implementation: |
+      from fastapi.security import OAuth2PasswordBearer
+
+      oauth2_scheme = OAuth2PasswordBearer(
+          tokenUrl="token",  # Not used with Better Auth
+          auto_error=True
+      )
+
+  get_current_user:
+    path: app/api/deps.py
+    implementation: |
+      from fastapi import Depends, HTTPException
+      from sqlalchemy.ext.asyncio import AsyncSession
+
+      from app.core.security import JWTService, TokenPayload
+      from app.core.config import settings
+      from app.db.session import get_db
+      from app.models.user import User
+
+      jwt_service = JWTService(secret=settings.BETTER_AUTH_SECRET)
+
+      async def get_current_user(
+          token: str = Depends(oauth2_scheme),
+          db: AsyncSession = Depends(get_db)
+      ) -> User:
+          payload = jwt_service.verify_token(token)
+
+          user = await db.get(User, payload.sub)
+          if not user:
+              raise HTTPException(
+                  status_code=404,
+                  detail="User not found"
+              )
+
+          return user
+
+      async def get_current_user_optional(
+          token: str | None = Depends(oauth2_scheme),
+          db: AsyncSession = Depends(get_db)
+      ) -> User | None:
+          if not token:
+              return None
+          try:
+              return await get_current_user(token, db)
+          except HTTPException:
+              return None
+
+configuration:
+  environment_variables:
+    BETTER_AUTH_SECRET:
+      description: Same secret used by Better Auth for signing
+      requirement: Must match frontend configuration
+
+validation_checks:
+  required:
+    - Signature validity
+    - Token not expired
+    - Required claims present (sub, exp)
+
+  optional:
+    - Audience claim (aud)
+    - Issuer claim (iss)
+    - Not before claim (nbf)
+
+error_responses:
+  token_expired:
+    status: 401
+    detail: "Token has expired"
+    action: Client should refresh token
+
+  invalid_token:
+    status: 401
+    detail: "Invalid token"
+    action: Client should re-authenticate
+
+  missing_token:
+    status: 401
+    detail: "Not authenticated"
+    action: Client should provide token
+
+testing:
+  scenarios:
+    - Valid token returns user
+    - Expired token returns 401
+    - Invalid signature returns 401
+    - Malformed token returns 401
+    - Missing claims returns 401
+    - User not in database returns 404

@@ -1,0 +1,212 @@
+# Skill Definition: tailwind_layout
+# Group: Frontend
+
+skill_id: tailwind_layout
+name: Tailwind Layout
+group: frontend
+version: 1.0.0
+
+purpose: |
+  Enables implementation of responsive layouts and UI styling
+  using Tailwind CSS. This skill covers layout patterns,
+  responsive design, component styling, and design system
+  implementation for the Todo application.
+
+tasks:
+  - Configure Tailwind CSS for Next.js
+  - Implement responsive layout patterns
+  - Create reusable UI components
+  - Design consistent spacing and typography
+  - Implement dark mode support
+  - Create form styling
+  - Design card and list layouts
+  - Implement navigation components
+  - Create loading skeletons
+  - Document component library
+
+agents:
+  - frontend_agent
+
+dependencies:
+  - nextjs_app_router
+  - server_client_components
+
+artifacts:
+  inputs:
+    - Design requirements
+    - UI/UX specifications
+  outputs:
+    - Tailwind configuration
+    - UI components
+    - Layout templates
+
+tailwind_config:
+  setup: |
+    // tailwind.config.ts
+    import type { Config } from "tailwindcss";
+
+    const config: Config = {
+      content: [
+        "./app/**/*.{js,ts,jsx,tsx,mdx}",
+        "./components/**/*.{js,ts,jsx,tsx,mdx}"
+      ],
+      theme: {
+        extend: {
+          colors: {
+            primary: {
+              50: "#f0f9ff",
+              500: "#0ea5e9",
+              600: "#0284c7",
+              700: "#0369a1"
+            }
+          }
+        }
+      },
+      plugins: []
+    };
+
+    export default config;
+
+layout_patterns:
+  app_shell:
+    description: Main application layout
+    implementation: |
+      // Sidebar + main content layout
+      <div className="flex h-screen bg-gray-50">
+        {/* Sidebar */}
+        <aside className="w-64 bg-white border-r border-gray-200 hidden md:block">
+          <nav className="p-4 space-y-2">
+            {/* Nav items */}
+          </nav>
+        </aside>
+
+        {/* Main content */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Header */}
+          <header className="h-16 bg-white border-b border-gray-200 flex items-center px-6">
+            <h1 className="text-xl font-semibold">Dashboard</h1>
+          </header>
+
+          {/* Content */}
+          <main className="flex-1 overflow-auto p-6">
+            {children}
+          </main>
+        </div>
+      </div>
+
+  card:
+    description: Content card component
+    implementation: |
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <h3 className="text-lg font-medium text-gray-900">{title}</h3>
+        <p className="mt-2 text-gray-600">{description}</p>
+      </div>
+
+  todo_item:
+    description: Todo list item
+    implementation: |
+      <div className="flex items-center gap-4 p-4 bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors">
+        <input
+          type="checkbox"
+          checked={completed}
+          className="h-5 w-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+        />
+        <div className="flex-1 min-w-0">
+          <p className={cn(
+            "text-gray-900 truncate",
+            completed && "line-through text-gray-400"
+          )}>
+            {title}
+          </p>
+          {dueDate && (
+            <p className="text-sm text-gray-500">{dueDate}</p>
+          )}
+        </div>
+        <button className="text-gray-400 hover:text-gray-600">
+          <TrashIcon className="h-5 w-5" />
+        </button>
+      </div>
+
+component_library:
+  button:
+    implementation: |
+      // components/ui/button.tsx
+      import { cn } from "@/lib/utils";
+
+      interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+        variant?: "primary" | "secondary" | "ghost";
+        size?: "sm" | "md" | "lg";
+      }
+
+      export function Button({
+        className,
+        variant = "primary",
+        size = "md",
+        ...props
+      }: ButtonProps) {
+        return (
+          <button
+            className={cn(
+              "inline-flex items-center justify-center rounded-md font-medium transition-colors",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
+              "disabled:opacity-50 disabled:pointer-events-none",
+              {
+                "bg-primary-600 text-white hover:bg-primary-700": variant === "primary",
+                "bg-gray-100 text-gray-900 hover:bg-gray-200": variant === "secondary",
+                "hover:bg-gray-100": variant === "ghost"
+              },
+              {
+                "h-8 px-3 text-sm": size === "sm",
+                "h-10 px-4": size === "md",
+                "h-12 px-6 text-lg": size === "lg"
+              },
+              className
+            )}
+            {...props}
+          />
+        );
+      }
+
+  input:
+    implementation: |
+      // components/ui/input.tsx
+      export function Input({
+        className,
+        ...props
+      }: React.InputHTMLAttributes<HTMLInputElement>) {
+        return (
+          <input
+            className={cn(
+              "w-full rounded-md border border-gray-300 px-3 py-2",
+              "text-gray-900 placeholder:text-gray-400",
+              "focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent",
+              "disabled:bg-gray-50 disabled:text-gray-500",
+              className
+            )}
+            {...props}
+          />
+        );
+      }
+
+responsive:
+  breakpoints:
+    sm: "640px"
+    md: "768px"
+    lg: "1024px"
+    xl: "1280px"
+
+  patterns: |
+    {/* Mobile first, then desktop */}
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {/* Cards */}
+    </div>
+
+    {/* Hide on mobile, show on desktop */}
+    <aside className="hidden md:block w-64">
+      {/* Sidebar */}
+    </aside>
+
+    {/* Mobile menu button */}
+    <button className="md:hidden">
+      <MenuIcon />
+    </button>

@@ -1,0 +1,100 @@
+# Skill Definition: relational_mapping
+# Group: Database
+
+skill_id: relational_mapping
+name: Relational Mapping
+group: database
+version: 1.0.0
+
+purpose: |
+  Enables design and implementation of relationships between
+  database entities using SQLModel/SQLAlchemy. This skill covers
+  one-to-many, many-to-many, and one-to-one relationships with
+  proper foreign key configuration and eager/lazy loading strategies.
+
+tasks:
+  - Design entity relationships (1:1, 1:N, M:N)
+  - Implement foreign key relationships in SQLModel
+  - Configure relationship() for ORM navigation
+  - Design association tables for many-to-many
+  - Implement cascade delete behaviors
+  - Configure eager vs lazy loading
+  - Handle circular relationship references
+  - Implement back_populates for bidirectional relations
+  - Optimize N+1 query problems
+  - Document relationship diagrams
+
+agents:
+  - database_agent
+  - backend_agent
+  - architect_agent
+
+dependencies:
+  - sqlmodel_models
+  - postgres_schema_design
+
+artifacts:
+  inputs:
+    - Entity relationship requirements
+    - SQLModel definitions
+  outputs:
+    - Relationship configurations
+    - Association tables
+    - ERD diagrams
+
+relationship_types:
+  one_to_many:
+    example: User has many Todos
+    implementation: |
+      class User(SQLModel, table=True):
+          todos: list["Todo"] = Relationship(back_populates="user")
+
+      class Todo(SQLModel, table=True):
+          user_id: uuid.UUID = Field(foreign_key="users.id")
+          user: User = Relationship(back_populates="todos")
+
+  many_to_many:
+    example: Todos have many Categories
+    implementation: |
+      class TodoCategory(SQLModel, table=True):
+          todo_id: uuid.UUID = Field(foreign_key="todos.id", primary_key=True)
+          category_id: uuid.UUID = Field(foreign_key="categories.id", primary_key=True)
+
+      class Todo(SQLModel, table=True):
+          categories: list["Category"] = Relationship(
+              back_populates="todos",
+              link_model=TodoCategory
+          )
+
+  one_to_one:
+    example: User has one Profile
+    implementation: |
+      class UserProfile(SQLModel, table=True):
+          user_id: uuid.UUID = Field(foreign_key="users.id", unique=True)
+          user: User = Relationship(back_populates="profile")
+
+todo_app_relationships:
+  - User -> Todos: One-to-Many
+  - User -> Categories: One-to-Many
+  - Todo -> Categories: Many-to-Many (via TodoCategory)
+  - Todo -> User: Many-to-One
+
+loading_strategies:
+  lazy:
+    description: Load related objects on access
+    use_case: Relationships rarely needed
+
+  eager:
+    description: Load with parent query
+    use_case: Always need related data
+    methods: [selectinload, joinedload]
+
+  explicit:
+    description: Load only when requested
+    use_case: Large related datasets
+
+cascade_options:
+  - all: Cascade all operations
+  - save-update: Cascade saves
+  - delete: Cascade deletes
+  - delete-orphan: Delete when removed from collection

@@ -1,0 +1,55 @@
+# Skill Definition: system_planning
+# Group: Planning
+
+skill_id: system_planning
+name: System Planning
+group: planning
+version: 1.0.0
+
+purpose: |
+  Enables high-level system architecture planning and design decisions.
+  This skill provides the ability to create architectural plans,
+  define system boundaries, identify integration points, and
+  establish technical strategies for the full-stack application.
+
+tasks:
+  - Design system architecture diagrams
+  - Define component boundaries and responsibilities
+  - Plan API contracts between frontend and backend
+  - Identify cross-cutting concerns (logging, auth, error handling)
+  - Establish data flow patterns
+  - Create technical decision documentation
+  - Plan integration strategies with external services (Neon, Better Auth)
+  - Define deployment architecture
+  - Suggest ADRs for significant decisions
+
+agents:
+  - architect_agent
+  - planner_agent
+  - coordinator_agent
+
+dependencies:
+  - spec_reader
+
+artifacts:
+  inputs:
+    - specs/<feature>/spec.md
+    - .specify/memory/constitution.md
+  outputs:
+    - specs/<feature>/plan.md
+    - history/adr/*.md (suggested, not auto-created)
+    - Architecture diagrams (mermaid)
+
+context:
+  stack:
+    frontend: Next.js 16 App Router
+    backend: FastAPI + SQLModel
+    database: Neon PostgreSQL
+    auth: Better Auth with JWT
+
+principles:
+  - Smallest viable change
+  - Reversible decisions where possible
+  - Clear separation of concerns
+  - API-first design
+  - Security by design

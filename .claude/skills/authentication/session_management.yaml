@@ -1,0 +1,142 @@
+# Skill Definition: session_management
+# Group: Authentication
+
+skill_id: session_management
+name: Session Management
+group: authentication
+version: 1.0.0
+
+purpose: |
+  Enables management of user sessions in the application,
+  including session creation, validation, renewal, and
+  termination. This skill handles both server-side session
+  state and client-side session handling in React.
+
+tasks:
+  - Configure session storage and duration
+  - Implement session creation on login
+  - Handle session validation on requests
+  - Implement session renewal/extension
+  - Create session termination on logout
+  - Handle multiple device sessions
+  - Implement session listing for users
+  - Create session revocation capabilities
+  - Handle expired session cleanup
+  - Implement "remember me" functionality
+
+agents:
+  - auth_agent
+  - frontend_agent
+  - backend_agent
+
+dependencies:
+  - better_auth_setup
+  - jwt_plugin_configuration
+
+artifacts:
+  inputs:
+    - Session requirements
+    - Better Auth configuration
+  outputs:
+    - Session management utilities
+    - Session hooks for React
+    - Session API endpoints
+
+session_configuration:
+  better_auth_config:
+    implementation: |
+      export const auth = betterAuth({
+        session: {
+          expiresIn: 60 * 60 * 24 * 7, // 7 days
+          updateAge: 60 * 60 * 24,     // Update session every 24 hours
+          cookieCache: {
+            enabled: true,
+            maxAge: 60 * 5 // 5 minute cache
+          }
+        }
+      });
+
+react_session_hooks:
+  useSession:
+    implementation: |
+      import { useSession } from "@/lib/auth-client";
+
+      export function ProtectedComponent() {
+        const { data: session, isPending, error } = useSession();
+
+        if (isPending) return <Loading />;
+        if (!session) return <Redirect to="/login" />;
+
+        return <div>Welcome, {session.user.name}</div>;
+      }
+
+  session_provider:
+    implementation: |
+      // In app/layout.tsx or providers
+      import { SessionProvider } from "@/lib/auth-client";
+
+      export function Providers({ children }) {
+        return (
+          <SessionProvider>
+            {children}
+          </SessionProvider>
+        );
+      }
+
+session_operations:
+  get_current_session:
+    client: |
+      const { data: session } = await authClient.getSession();
+
+    server: |
+      import { auth } from "@/lib/auth";
+      import { headers } from "next/headers";
+
+      const session = await auth.api.getSession({
+        headers: await headers()
+      });
+
+  list_user_sessions:
+    implementation: |
+      const { data: sessions } = await authClient.listSessions();
+      // Returns array of active sessions with device info
+
+  revoke_session:
+    implementation: |
+      await authClient.revokeSession({ sessionId: "session_123" });
+
+  revoke_all_sessions:
+    implementation: |
+      await authClient.revokeAllSessions();
+      // Logs out from all devices
+
+middleware_protection:
+  nextjs_middleware:
+    path: middleware.ts
+    implementation: |
+      import { auth } from "@/lib/auth";
+      import { NextResponse } from "next/server";
+
+      export async function middleware(request) {
+        const session = await auth.api.getSession({
+          headers: request.headers
+        });
+
+        if (!session && request.nextUrl.pathname.startsWith("/app")) {
+          return NextResponse.redirect(new URL("/login", request.url));
+        }
+
+        return NextResponse.next();
+      }
+
+      export const config = {
+        matcher: ["/app/:path*"]
+      };
+
+session_security:
+  - Use secure, HTTP-only cookies
+  - Implement session fixation prevention
+  - Rotate session IDs on privilege changes
+  - Set appropriate cookie attributes (SameSite, Secure)
+  - Implement idle timeout
+  - Log session events for security auditing

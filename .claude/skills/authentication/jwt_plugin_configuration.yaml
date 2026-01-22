@@ -1,0 +1,120 @@
+# Skill Definition: jwt_plugin_configuration
+# Group: Authentication
+
+skill_id: jwt_plugin_configuration
+name: JWT Plugin Configuration
+group: authentication
+version: 1.0.0
+
+purpose: |
+  Enables configuration of Better Auth's JWT plugin for
+  token-based authentication. This skill covers JWT secret
+  setup, token expiration, custom claims, and integration
+  with the FastAPI backend for stateless authentication.
+
+tasks:
+  - Install and configure Better Auth JWT plugin
+  - Configure JWT secret and algorithm
+  - Set token expiration policies
+  - Define custom JWT claims (user ID, email, roles)
+  - Configure refresh token handling
+  - Set up token rotation policies
+  - Implement token blacklisting (if needed)
+  - Configure CORS for token endpoints
+  - Test JWT generation and validation
+  - Document JWT configuration
+
+agents:
+  - auth_agent
+  - backend_agent
+  - architect_agent
+
+dependencies:
+  - better_auth_setup
+
+artifacts:
+  inputs:
+    - Better Auth base configuration
+    - JWT requirements
+  outputs:
+    - JWT plugin configuration
+    - Token schemas
+    - JWT documentation
+
+jwt_configuration:
+  plugin_setup:
+    implementation: |
+      import { betterAuth } from "better-auth";
+      import { jwt } from "better-auth/plugins";
+
+      export const auth = betterAuth({
+        // ... base config
+        plugins: [
+          jwt({
+            jwt: {
+              expiresIn: 60 * 15, // 15 minutes
+              customClaims: async (user) => ({
+                userId: user.id,
+                email: user.email,
+                name: user.name
+              })
+            },
+            refreshToken: {
+              enabled: true,
+              expiresIn: 60 * 60 * 24 * 7 // 7 days
+            }
+          })
+        ]
+      });
+
+token_structure:
+  access_token:
+    header:
+      alg: HS256
+      typ: JWT
+    payload:
+      sub: user_id
+      email: user_email
+      name: user_name
+      iat: issued_at_timestamp
+      exp: expiration_timestamp
+    expiration: 15 minutes
+
+  refresh_token:
+    purpose: Obtain new access tokens
+    storage: HTTP-only cookie or secure storage
+    expiration: 7 days
+    rotation: On each refresh
+
+environment_variables:
+  BETTER_AUTH_SECRET:
+    description: Secret key for signing JWTs
+    requirements:
+      - Minimum 32 characters
+      - Cryptographically random
+      - Never commit to version control
+    generation: |
+      openssl rand -base64 32
+
+security_considerations:
+  - Use strong, random secrets
+  - Keep access token lifetime short
+  - Implement refresh token rotation
+  - Store refresh tokens securely
+  - Validate all claims on backend
+  - Use HTTPS in production
+  - Consider token binding
+
+client_usage:
+  get_token:
+    implementation: |
+      import { authClient } from "@/lib/auth-client";
+
+      const { data: session } = await authClient.getSession();
+      const accessToken = session?.token;
+
+  refresh_token:
+    implementation: |
+      // Handled automatically by Better Auth client
+      // Or manually:
+      const { data } = await authClient.refreshToken();

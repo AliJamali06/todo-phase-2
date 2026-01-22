@@ -1,0 +1,129 @@
+# Skill Definition: http_exception_handling
+# Group: Backend
+
+skill_id: http_exception_handling
+name: HTTP Exception Handling
+group: backend
+version: 1.0.0
+
+purpose: |
+  Enables consistent and comprehensive error handling across
+  the FastAPI application. This skill covers custom exceptions,
+  exception handlers, error response formatting, and proper
+  HTTP status code usage.
+
+tasks:
+  - Define custom exception classes
+  - Implement global exception handlers
+  - Create consistent error response format
+  - Map domain exceptions to HTTP status codes
+  - Handle validation errors gracefully
+  - Implement error logging and tracking
+  - Design user-friendly error messages
+  - Handle database exceptions
+  - Implement retry logic for transient errors
+  - Document error responses in OpenAPI
+
+agents:
+  - backend_agent
+  - architect_agent
+
+dependencies:
+  - fastapi_routing
+
+artifacts:
+  inputs:
+    - Error scenarios from spec
+    - Domain exception requirements
+  outputs:
+    - Exception classes
+    - Exception handlers
+    - Error response schemas
+
+exception_hierarchy:
+  base:
+    name: AppException
+    implementation: |
+      class AppException(Exception):
+          def __init__(
+              self,
+              message: str,
+              status_code: int = 500,
+              error_code: str = "INTERNAL_ERROR"
+          ):
+              self.message = message
+              self.status_code = status_code
+              self.error_code = error_code
+
+  domain_exceptions:
+    - TodoNotFoundException(404, "TODO_NOT_FOUND")
+    - TodoAccessDeniedException(403, "TODO_ACCESS_DENIED")
+    - InvalidTodoStateException(400, "INVALID_TODO_STATE")
+    - CategoryNotFoundException(404, "CATEGORY_NOT_FOUND")
+    - DuplicateCategoryException(409, "DUPLICATE_CATEGORY")
+
+error_response_format:
+  schema: |
+    class ErrorResponse(BaseModel):
+        error_code: str
+        message: str
+        details: dict | None = None
+        request_id: str | None = None
+
+  example: |
+    {
+      "error_code": "TODO_NOT_FOUND",
+      "message": "Todo with id 123 not found",
+      "details": null,
+      "request_id": "req_abc123"
+    }
+
+exception_handlers:
+  app_exception:
+    implementation: |
+      @app.exception_handler(AppException)
+      async def app_exception_handler(request: Request, exc: AppException):
+          return JSONResponse(
+              status_code=exc.status_code,
+              content=ErrorResponse(
+                  error_code=exc.error_code,
+                  message=exc.message,
+                  request_id=request.state.request_id
+              ).model_dump()
+          )
+
+  validation_error:
+    implementation: |
+      @app.exception_handler(RequestValidationError)
+      async def validation_exception_handler(request, exc):
+          return JSONResponse(
+              status_code=422,
+              content=ErrorResponse(
+                  error_code="VALIDATION_ERROR",
+                  message="Request validation failed",
+                  details={"errors": exc.errors()}
+              ).model_dump()
+          )
+
+  database_error:
+    implementation: |
+      @app.exception_handler(SQLAlchemyError)
+      async def db_exception_handler(request, exc):
+          logger.error(f"Database error: {exc}")
+          return JSONResponse(
+              status_code=500,
+              content=ErrorResponse(
+                  error_code="DATABASE_ERROR",
+                  message="A database error occurred"
+              ).model_dump()
+          )
+
+status_code_mapping:
+  400: Validation errors, bad request format
+  401: Missing or invalid authentication
+  403: Insufficient permissions
+  404: Resource not found
+  409: Conflict (duplicate, state conflict)
+  422: Validation error (Pydantic)
+  500: Internal server error
+  503: Service unavailable
