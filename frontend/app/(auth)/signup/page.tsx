@@ -28,7 +28,7 @@ export default function SignupPage() {
     try {
       const result = await signUpWithCredentials(email, password, name);
       if (result.error) {
-        setError(result.error.message);
+        setError(String(result.error.message ?? "Sign up failed. Please try again."));
       } else {
         router.push("/dashboard");
         router.refresh();

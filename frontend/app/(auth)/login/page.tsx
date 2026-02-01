@@ -20,7 +20,7 @@ export default function LoginPage() {
     try {
       const result = await signInWithCredentials(email, password);
       if (result.error) {
-        setError(result.error.message);
+        setError(String(result.error.message ?? "Sign in failed. Please try again."));
       } else {
         router.push("/dashboard");
         router.refresh();
