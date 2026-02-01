@@ -1,0 +1,497 @@
+openapi: 3.1.0
+info:
+  title: Phase II Todo API
+  description: |
+    REST API for the Phase II Full-Stack Todo Web Application.
+    All task endpoints require JWT authentication.
+  version: 1.0.0
+  contact:
+    name: Phase II Development
+
+servers:
+  - url: http://localhost:8000
+    description: Local development
+  - url: https://api.todo.example.com
+    description: Production (placeholder)
+
+tags:
+  - name: auth
+    description: Authentication operations (handled by Better Auth, proxied)
+  - name: tasks
+    description: Task CRUD operations
+  - name: users
+    description: User profile operations
+
+paths:
+  # ============================================================================
+  # AUTH ENDPOINTS (Better Auth handles these, documented for completeness)
+  # ============================================================================
+  /api/auth/register:
+    post:
+      tags: [auth]
+      summary: Register new user
+      description: Creates a new user account. Handled by Better Auth.
+      operationId: registerUser
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Invalid input (email taken, weak password)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/auth/login:
+    post:
+      tags: [auth]
+      summary: Login user
+      description: Authenticates user and returns JWT. Handled by Better Auth.
+      operationId: loginUser
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/auth/logout:
+    post:
+      tags: [auth]
+      summary: Logout user
+      description: Invalidates current session. Handled by Better Auth.
+      operationId: logoutUser
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Logout successful
+        '401':
+          description: Not authenticated
+
+  # ============================================================================
+  # TASK ENDPOINTS
+  # ============================================================================
+  /api/todos:
+    get:
+      tags: [tasks]
+      summary: List user's tasks
+      description: |
+        Returns all tasks owned by the authenticated user.
+        Supports filtering by completion status.
+      operationId: listTasks
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: completed
+          in: query
+          required: false
+          description: Filter by completion status
+          schema:
+            type: boolean
+        - name: limit
+          in: query
+          required: false
+          description: Maximum number of tasks to return
+          schema:
+            type: integer
+            default: 100
+            minimum: 1
+            maximum: 100
+        - name: offset
+          in: query
+          required: false
+          description: Number of tasks to skip
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+      responses:
+        '200':
+          description: List of tasks
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      tags: [tasks]
+      summary: Create new task
+      description: Creates a new task for the authenticated user.
+      operationId: createTask
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskCreate'
+      responses:
+        '201':
+          description: Task created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/todos/{taskId}:
+    parameters:
+      - name: taskId
+        in: path
+        required: true
+        description: Task UUID
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      tags: [tasks]
+      summary: Get task by ID
+      description: |
+        Returns a single task. Only returns if owned by authenticated user.
+        Returns 404 if task doesn't exist OR isn't owned by user (security).
+      operationId: getTask
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Task details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags: [tasks]
+      summary: Update task
+      description: Updates task title and/or completion status.
+      operationId: updateTask
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskUpdate'
+      responses:
+        '200':
+          description: Task updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+    delete:
+      tags: [tasks]
+      summary: Delete task
+      description: Permanently deletes a task.
+      operationId: deleteTask
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Task deleted (no content)
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/todos/{taskId}/complete:
+    parameters:
+      - name: taskId
+        in: path
+        required: true
+        description: Task UUID
+        schema:
+          type: string
+          format: uuid
+
+    patch:
+      tags: [tasks]
+      summary: Toggle task completion
+      description: Toggles the completed status of a task.
+      operationId: toggleTaskComplete
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Task completion toggled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ============================================================================
+  # USER ENDPOINTS
+  # ============================================================================
+  /api/users/me:
+    get:
+      tags: [users]
+      summary: Get current user profile
+      description: Returns the authenticated user's profile information.
+      operationId: getCurrentUser
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token from Better Auth
+
+  schemas:
+    # ==========================================================================
+    # AUTH SCHEMAS
+    # ==========================================================================
+    RegisterRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          example: user@example.com
+        password:
+          type: string
+          format: password
+          minLength: 8
+          example: securePassword123
+        name:
+          type: string
+          maxLength: 255
+          example: John Doe
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+
+    AuthResponse:
+      type: object
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+        token:
+          type: string
+          description: JWT access token
+
+    # ==========================================================================
+    # USER SCHEMAS
+    # ==========================================================================
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    # ==========================================================================
+    # TASK SCHEMAS
+    # ==========================================================================
+    TaskCreate:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: Task title (cannot be empty)
+          example: Buy groceries
+
+    TaskUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: Updated title
+        completed:
+          type: boolean
+          description: Completion status
+
+    Task:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        completed:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    TaskListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Task'
+        total:
+          type: integer
+          description: Total number of tasks matching filter
+        limit:
+          type: integer
+        offset:
+          type: integer
+
+    # ==========================================================================
+    # ERROR SCHEMAS
+    # ==========================================================================
+    ErrorResponse:
+      type: object
+      required: [error_code, message]
+      properties:
+        error_code:
+          type: string
+          description: Machine-readable error code
+          example: TASK_NOT_FOUND
+        message:
+          type: string
+          description: Human-readable error message
+          example: The requested task does not exist
+        details:
+          type: object
+          nullable: true
+          description: Additional error details
+
+    ValidationErrorResponse:
+      type: object
+      properties:
+        error_code:
+          type: string
+          example: VALIDATION_ERROR
+        message:
+          type: string
+          example: Request validation failed
+        details:
+          type: object
+          properties:
+            errors:
+              type: array
+              items:
+                type: object
+                properties:
+                  loc:
+                    type: array
+                    items:
+                      type: string
+                  msg:
+                    type: string
+                  type:
+                    type: string
+
+  responses:
+    Unauthorized:
+      description: Authentication required or token invalid
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error_code: UNAUTHORIZED
+            message: Authentication required
+
+    NotFound:
+      description: Resource not found (or not owned by user)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error_code: TASK_NOT_FOUND
+            message: The requested task does not exist
+
+    ValidationError:
+      description: Request validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationErrorResponse'
