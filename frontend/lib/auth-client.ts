@@ -61,5 +61,14 @@ export async function signOutUser() {
   return authClient.signOut();
 }
 
+/**
+ * Get the current session token for API requests.
+ * @returns Promise with the token string or null if not authenticated
+ */
+export async function getToken(): Promise<string | null> {
+  const session = await authClient.getSession();
+  return session?.data?.session?.token ?? null;
+}
+
 // Export the auth client for advanced usage
 export { authClient };
