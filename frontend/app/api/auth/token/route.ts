@@ -11,10 +11,18 @@ import * as jose from "jose";
 
 export async function GET(request: NextRequest) {
   try {
+    // Debug: log environment (first 4 chars of secret only)
+    const secretPreview = process.env.BETTER_AUTH_SECRET
+      ? `${process.env.BETTER_AUTH_SECRET.slice(0, 4)}...`
+      : "NOT SET";
+    console.log("Token endpoint - BETTER_AUTH_SECRET:", secretPreview);
+
     // Get the session from Better Auth
     const session = await auth.api.getSession({
       headers: await headers(),
     });
+
+    console.log("Session check:", session?.user ? `User: ${session.user.email}` : "No session");
 
     if (!session?.user) {
       return NextResponse.json(
@@ -28,7 +36,7 @@ export async function GET(request: NextRequest) {
     if (!secret) {
       console.error("BETTER_AUTH_SECRET not configured");
       return NextResponse.json(
-        { error: "Server configuration error" },
+        { error: "Server configuration error: BETTER_AUTH_SECRET missing" },
         { status: 500 }
       );
     }
@@ -46,6 +54,8 @@ export async function GET(request: NextRequest) {
       .setIssuedAt()
       .setExpirationTime("7d")
       .sign(secretKey);
+
+    console.log("Token generated successfully, length:", token.length);
 
     return NextResponse.json({ token });
   } catch (error) {
