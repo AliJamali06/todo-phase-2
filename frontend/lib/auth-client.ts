@@ -95,9 +95,21 @@ export async function getToken(): Promise<string | null> {
       return null;
     }
 
-    // Get the JWT token
-    const response = await authClient.token();
-    const token = response?.data?.token ?? null;
+    // Get the JWT token from our custom endpoint
+    const baseURL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const response = await fetch(`${baseURL}/api/auth/token`, {
+      method: "GET",
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      console.error("Token endpoint error:", response.status);
+      tokenCache = null;
+      return null;
+    }
+
+    const data = await response.json();
+    const token = data?.token ?? null;
 
     // Cache the token
     if (token) {

@@ -1,30 +1,21 @@
 """
-JWT verification service for validating Better Auth tokens.
+JWT verification service for validating tokens.
 
-Verifies JWT tokens issued by Better Auth frontend using EdDSA (Ed25519) algorithm.
-Fetches and caches JWKS from the frontend for token verification.
+Verifies JWT tokens using HS256 algorithm with shared secret.
 """
-import time
 from datetime import datetime, timezone
 from typing import Optional
 
-import httpx
 import jwt
-from jwt import PyJWKClient
 from pydantic import BaseModel
 
 from app.core.config import get_settings
 
 settings = get_settings()
 
-# Cache for JWKS client
-_jwks_client: Optional[PyJWKClient] = None
-_jwks_client_created_at: float = 0
-JWKS_CACHE_TTL = 3600  # 1 hour
-
 
 class JWTPayload(BaseModel):
-    """JWT token payload structure from Better Auth."""
+    """JWT token payload structure."""
 
     sub: str  # User ID
     email: str
@@ -33,29 +24,9 @@ class JWTPayload(BaseModel):
     exp: Optional[int] = None  # Expiration
 
 
-def get_jwks_client() -> PyJWKClient:
-    """
-    Get or create a cached JWKS client for the frontend.
-
-    Returns:
-        PyJWKClient instance for fetching signing keys
-    """
-    global _jwks_client, _jwks_client_created_at
-
-    current_time = time.time()
-
-    # Refresh cache if expired or not initialized
-    if _jwks_client is None or (current_time - _jwks_client_created_at) > JWKS_CACHE_TTL:
-        jwks_url = f"{settings.frontend_url}/api/auth/jwks"
-        _jwks_client = PyJWKClient(jwks_url)
-        _jwks_client_created_at = current_time
-
-    return _jwks_client
-
-
 def verify_jwt_token(token: str) -> Optional[JWTPayload]:
     """
-    Verify and decode a JWT token from Better Auth.
+    Verify and decode a JWT token.
 
     Args:
         token: The JWT token string from Authorization header
@@ -64,15 +35,11 @@ def verify_jwt_token(token: str) -> Optional[JWTPayload]:
         JWTPayload if valid, None if invalid or expired
     """
     try:
-        # Get the signing key from JWKS
-        jwks_client = get_jwks_client()
-        signing_key = jwks_client.get_signing_key_from_jwt(token)
-
-        # Decode and verify the token
+        # Decode and verify the token using the shared secret
         payload = jwt.decode(
             token,
-            signing_key.key,
-            algorithms=["EdDSA"],
+            settings.better_auth_secret,
+            algorithms=["HS256"],
             options={
                 "verify_signature": True,
                 "verify_exp": True,
