@@ -10,5 +10,5 @@ from app.api.routes import tasks, users
 api_router = APIRouter()
 
 # Include route modules
-api_router.include_router(tasks.router, prefix="/todos", tags=["tasks"])
+api_router.include_router(tasks.router, prefix="/tasks", tags=["tasks"])
 api_router.include_router(users.router, prefix="/users", tags=["users"])
