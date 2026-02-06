@@ -1,54 +1,37 @@
 "use client";
 
+import { useState, useEffect, useCallback } from "react";
 import { useSession } from "@/lib/auth-client";
+import { listTasks } from "@/lib/api/tasks";
+import type { Task } from "@/lib/api/types";
 import Link from "next/link";
-
-const stats = [
-  {
-    label: "Total Tasks",
-    value: 12,
-    change: "+3 this week",
-    icon: (
-      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
-      </svg>
-    ),
-    color: "bg-blue-50 text-blue-600",
-  },
-  {
-    label: "Completed",
-    value: 8,
-    change: "67% done",
-    icon: (
-      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>
-    ),
-    color: "bg-green-50 text-green-600",
-  },
-  {
-    label: "In Progress",
-    value: 4,
-    change: "33% remaining",
-    icon: (
-      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>
-    ),
-    color: "bg-yellow-50 text-yellow-600",
-  },
-];
-
-const recentTasks = [
-  { id: "1", title: "Design the landing page wireframes", completed: true, date: "Today" },
-  { id: "2", title: "Set up CI/CD pipeline for staging", completed: false, date: "Today" },
-  { id: "3", title: "Review pull request #42", completed: true, date: "Yesterday" },
-  { id: "4", title: "Write unit tests for auth module", completed: false, date: "Yesterday" },
-  { id: "5", title: "Update API documentation", completed: false, date: "2 days ago" },
-];
 
 export default function DashboardPage() {
   const { data: session } = useSession();
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchTasks = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await listTasks();
+      if (response.success) {
+        setTasks(response.data.items);
+      } else {
+        setError(response.error.message);
+      }
+    } catch {
+      setError("Failed to load tasks.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchTasks();
+  }, [fetchTasks]);
 
   const greeting = () => {
     const hour = new Date().getHours();
@@ -56,6 +39,65 @@ export default function DashboardPage() {
     if (hour < 17) return "Good afternoon";
     return "Good evening";
   };
+
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) return "Today";
+    if (diffDays === 1) return "Yesterday";
+    if (diffDays < 7) return `${diffDays} days ago`;
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  };
+
+  // Calculate stats from real data
+  const totalCount = tasks.length;
+  const completedCount = tasks.filter((t) => t.completed).length;
+  const activeCount = totalCount - completedCount;
+  const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
+  // Get recent tasks (last 5)
+  const recentTasks = [...tasks]
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, 5);
+
+  const stats = [
+    {
+      label: "Total Tasks",
+      value: totalCount,
+      change: activeCount > 0 ? `${activeCount} pending` : "All done!",
+      icon: (
+        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+        </svg>
+      ),
+      color: "bg-blue-50 text-blue-600",
+    },
+    {
+      label: "Completed",
+      value: completedCount,
+      change: totalCount > 0 ? `${progressPercent}% done` : "No tasks yet",
+      icon: (
+        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      ),
+      color: "bg-green-50 text-green-600",
+    },
+    {
+      label: "In Progress",
+      value: activeCount,
+      change: totalCount > 0 ? `${100 - progressPercent}% remaining` : "Start adding tasks",
+      icon: (
+        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      ),
+      color: "bg-yellow-50 text-yellow-600",
+    },
+  ];
 
   return (
     <div className="space-y-8">
@@ -69,6 +111,23 @@ export default function DashboardPage() {
         </p>
       </div>
 
+      {/* Error message */}
+      {error && (
+        <div className="rounded-lg bg-red-50 border border-red-200 p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-red-700">{error}</p>
+            <button
+              onClick={() => setError(null)}
+              className="text-red-500 hover:text-red-700"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Stats grid */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {stats.map((stat) => (
@@ -76,8 +135,12 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-500">{stat.label}</p>
-                <p className="text-3xl font-bold text-gray-900 mt-1">{stat.value}</p>
-                <p className="text-xs text-gray-400 mt-1">{stat.change}</p>
+                {isLoading ? (
+                  <div className="h-9 w-12 bg-gray-200 rounded animate-pulse mt-1"></div>
+                ) : (
+                  <p className="text-3xl font-bold text-gray-900 mt-1">{stat.value}</p>
+                )}
+                <p className="text-xs text-gray-400 mt-1">{isLoading ? "Loading..." : stat.change}</p>
               </div>
               <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${stat.color}`}>
                 {stat.icon}
@@ -101,27 +164,50 @@ export default function DashboardPage() {
             </Link>
           </div>
           <div className="divide-y divide-gray-50">
-            {recentTasks.map((task) => (
-              <div key={task.id} className="flex items-center gap-3 px-5 py-3.5 hover:bg-gray-50/50 transition-colors">
-                <div
-                  className={`flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border-2 ${
-                    task.completed
-                      ? "border-green-500 bg-green-500"
-                      : "border-gray-300"
-                  }`}
-                >
-                  {task.completed && (
-                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                    </svg>
-                  )}
+            {isLoading ? (
+              // Loading skeleton
+              Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-3 px-5 py-3.5">
+                  <div className="w-5 h-5 rounded-full bg-gray-200 animate-pulse"></div>
+                  <div className="flex-1">
+                    <div className="h-4 w-3/4 bg-gray-200 rounded animate-pulse"></div>
+                  </div>
+                  <div className="h-3 w-16 bg-gray-200 rounded animate-pulse"></div>
                 </div>
-                <span className={`flex-1 text-sm ${task.completed ? "text-gray-400 line-through" : "text-gray-700"}`}>
-                  {task.title}
-                </span>
-                <span className="text-xs text-gray-400">{task.date}</span>
+              ))
+            ) : recentTasks.length === 0 ? (
+              <div className="px-5 py-8 text-center">
+                <p className="text-sm text-gray-500">No tasks yet. Create your first task!</p>
+                <Link
+                  href="/dashboard/tasks"
+                  className="inline-block mt-3 text-sm font-medium text-primary-600 hover:text-primary-700"
+                >
+                  Go to Tasks →
+                </Link>
               </div>
-            ))}
+            ) : (
+              recentTasks.map((task) => (
+                <div key={task.id} className="flex items-center gap-3 px-5 py-3.5 hover:bg-gray-50/50 transition-colors">
+                  <div
+                    className={`flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border-2 ${
+                      task.completed
+                        ? "border-green-500 bg-green-500"
+                        : "border-gray-300"
+                    }`}
+                  >
+                    {task.completed && (
+                      <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                      </svg>
+                    )}
+                  </div>
+                  <span className={`flex-1 text-sm ${task.completed ? "text-gray-400 line-through" : "text-gray-700"}`}>
+                    {task.title}
+                  </span>
+                  <span className="text-xs text-gray-400">{formatDate(task.created_at)}</span>
+                </div>
+              ))
+            )}
           </div>
         </div>
 
@@ -163,13 +249,24 @@ export default function DashboardPage() {
           {/* Progress bar */}
           <div className="mt-6 pt-5 border-t border-gray-100">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-gray-700">Weekly Progress</span>
-              <span className="text-sm font-semibold text-primary-600">67%</span>
+              <span className="text-sm font-medium text-gray-700">Progress</span>
+              <span className="text-sm font-semibold text-primary-600">
+                {isLoading ? "..." : `${progressPercent}%`}
+              </span>
             </div>
             <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-              <div className="h-full bg-primary-600 rounded-full transition-all" style={{ width: "67%" }} />
+              {isLoading ? (
+                <div className="h-full w-1/2 bg-gray-200 rounded-full animate-pulse"></div>
+              ) : (
+                <div
+                  className="h-full bg-primary-600 rounded-full transition-all duration-500"
+                  style={{ width: `${progressPercent}%` }}
+                />
+              )}
             </div>
-            <p className="text-xs text-gray-400 mt-2">8 of 12 tasks completed</p>
+            <p className="text-xs text-gray-400 mt-2">
+              {isLoading ? "Loading..." : `${completedCount} of ${totalCount} tasks completed`}
+            </p>
           </div>
         </div>
       </div>
