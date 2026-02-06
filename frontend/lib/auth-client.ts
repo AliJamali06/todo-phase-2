@@ -56,23 +56,61 @@ export async function signUpWithCredentials(
   });
 }
 
+// Cache for the token to avoid repeated calls
+let tokenCache: { token: string | null; expiresAt: number } | null = null;
+const TOKEN_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+/**
+ * Clear the token cache (useful after sign out)
+ */
+export function clearTokenCache() {
+  tokenCache = null;
+}
+
 /**
  * Sign out the current user.
  * @returns Promise that resolves when sign out is complete
  */
 export async function signOutUser() {
+  clearTokenCache();
   return authClient.signOut();
 }
 
 /**
  * Get JWT token for API requests.
+ * Includes caching and retry logic for better reliability.
  * @returns Promise with the JWT string or null if not authenticated
  */
 export async function getToken(): Promise<string | null> {
+  // Check cache first
+  if (tokenCache && Date.now() < tokenCache.expiresAt) {
+    return tokenCache.token;
+  }
+
   try {
+    // Get session first to check if user is authenticated
+    const session = await authClient.getSession();
+    if (!session?.data?.user) {
+      tokenCache = null;
+      return null;
+    }
+
+    // Get the JWT token
     const response = await authClient.token();
-    return response?.data?.token ?? null;
-  } catch {
+    const token = response?.data?.token ?? null;
+
+    // Cache the token
+    if (token) {
+      tokenCache = {
+        token,
+        expiresAt: Date.now() + TOKEN_CACHE_TTL,
+      };
+    }
+
+    return token;
+  } catch (error) {
+    console.error("Failed to get token:", error);
+    tokenCache = null;
     return null;
   }
 }

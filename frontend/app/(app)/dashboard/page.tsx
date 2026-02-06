@@ -1,29 +1,45 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useSession } from "@/lib/auth-client";
+import { useRouter } from "next/navigation";
+import { useSession, signOutUser } from "@/lib/auth-client";
 import { listTasks } from "@/lib/api/tasks";
 import type { Task } from "@/lib/api/types";
 import Link from "next/link";
 
 export default function DashboardPage() {
+  const router = useRouter();
   const { data: session } = useSession();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isAuthError, setIsAuthError] = useState(false);
+
+  const handleReLogin = async () => {
+    await signOutUser();
+    router.push("/login");
+  };
 
   const fetchTasks = useCallback(async () => {
     setIsLoading(true);
     setError(null);
+    setIsAuthError(false);
     try {
       const response = await listTasks();
       if (response.success) {
         setTasks(response.data.items);
       } else {
-        setError(response.error.message);
+        // Check if it's an authentication error
+        const errorMsg = response.error.message.toLowerCase();
+        if (errorMsg.includes("token") || errorMsg.includes("auth") || errorMsg.includes("unauthorized")) {
+          setIsAuthError(true);
+          setError("Your session has expired. Please log in again.");
+        } else {
+          setError(response.error.message);
+        }
       }
     } catch {
-      setError("Failed to load tasks.");
+      setError("Failed to load tasks. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -113,17 +129,45 @@ export default function DashboardPage() {
 
       {/* Error message */}
       {error && (
-        <div className="rounded-lg bg-red-50 border border-red-200 p-4">
+        <div className={`rounded-lg border p-4 ${isAuthError ? "bg-amber-50 border-amber-200" : "bg-red-50 border-red-200"}`}>
           <div className="flex items-center justify-between">
-            <p className="text-sm text-red-700">{error}</p>
-            <button
-              onClick={() => setError(null)}
-              className="text-red-500 hover:text-red-700"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+            <div className="flex items-center gap-3">
+              {isAuthError ? (
+                <svg className="w-5 h-5 text-amber-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+                </svg>
+              )}
+              <p className={`text-sm ${isAuthError ? "text-amber-700" : "text-red-700"}`}>{error}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              {isAuthError ? (
+                <button
+                  onClick={handleReLogin}
+                  className="text-sm font-medium text-amber-700 hover:text-amber-800 px-3 py-1.5 rounded-md hover:bg-amber-100 transition-colors"
+                >
+                  Log in again
+                </button>
+              ) : (
+                <button
+                  onClick={fetchTasks}
+                  className="text-sm font-medium text-red-700 hover:text-red-800 px-3 py-1.5 rounded-md hover:bg-red-100 transition-colors"
+                >
+                  Retry
+                </button>
+              )}
+              <button
+                onClick={() => setError(null)}
+                className={`${isAuthError ? "text-amber-500 hover:text-amber-700" : "text-red-500 hover:text-red-700"}`}
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
       )}
