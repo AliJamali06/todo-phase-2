@@ -8,6 +8,11 @@ import type { ErrorResponse, ApiResponse } from "./types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
+// Debug logging for API URL
+if (typeof window !== "undefined") {
+  console.log("API URL:", API_URL);
+}
+
 /**
  * Base fetch function with authentication.
  */
@@ -26,10 +31,15 @@ async function fetchWithAuth(
     (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${API_URL}/api${endpoint}`, {
+  const url = `${API_URL}/api${endpoint}`;
+  console.log(`API Request: ${options.method || "GET"} ${url}`);
+
+  const response = await fetch(url, {
     ...options,
     headers,
   });
+
+  console.log(`API Response: ${response.status} ${response.statusText} for ${url}`);
 
   return response;
 }
@@ -48,15 +58,18 @@ async function parseResponse<T>(response: Response): Promise<ApiResponse<T>> {
     return { success: true, data };
   }
 
-  // Handle error responses
+  // Handle error responses - include status code in error
+  const statusCode = response.status;
+  const statusText = response.statusText;
+
   try {
     const error = (await response.json()) as ErrorResponse | { detail: ErrorResponse };
     const errorResponse = "detail" in error ? error.detail : error;
     return {
       success: false,
       error: {
-        error_code: errorResponse.error_code || "UNKNOWN_ERROR",
-        message: errorResponse.message || "An error occurred",
+        error_code: errorResponse.error_code || `HTTP_${statusCode}`,
+        message: errorResponse.message || `Request failed: ${statusText}`,
         details: errorResponse.details,
       },
     };
@@ -64,8 +77,8 @@ async function parseResponse<T>(response: Response): Promise<ApiResponse<T>> {
     return {
       success: false,
       error: {
-        error_code: "NETWORK_ERROR",
-        message: "Failed to parse error response",
+        error_code: `HTTP_${statusCode}`,
+        message: `Request failed: ${statusText}`,
       },
     };
   }

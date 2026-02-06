@@ -91,6 +91,8 @@ export async function getToken(): Promise<string | null> {
   try {
     // Get session first to check if user is authenticated
     const session = await authClient.getSession();
+    console.log("Session check:", session?.data?.user ? "authenticated" : "not authenticated");
+
     if (!session?.data?.user) {
       tokenCache = null;
       return null;
@@ -98,10 +100,15 @@ export async function getToken(): Promise<string | null> {
 
     // Get the JWT token from our custom endpoint
     const baseURL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-    const response = await fetch(`${baseURL}/api/auth/token`, {
+    const tokenUrl = `${baseURL}/api/auth/token`;
+    console.log("Fetching token from:", tokenUrl);
+
+    const response = await fetch(tokenUrl, {
       method: "GET",
       credentials: "include",
     });
+
+    console.log("Token endpoint response:", response.status, response.statusText);
 
     if (!response.ok) {
       console.error("Token endpoint error:", response.status);
@@ -111,6 +118,7 @@ export async function getToken(): Promise<string | null> {
 
     const data = await response.json();
     const token = data?.token ?? null;
+    console.log("Token received:", token ? "yes" : "no");
 
     // Cache the token
     if (token) {
