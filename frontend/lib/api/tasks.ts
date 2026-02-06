@@ -20,7 +20,7 @@ import type {
  * @returns Created task or error
  */
 export async function createTask(data: TaskCreate): Promise<ApiResponse<Task>> {
-  return apiClient.post<Task>("/todos", data);
+  return apiClient.post<Task>("/tasks", data);
 }
 
 /**
@@ -45,7 +45,7 @@ export async function listTasks(
   }
 
   const query = searchParams.toString();
-  const endpoint = query ? `/todos?${query}` : "/todos";
+  const endpoint = query ? `/tasks?${query}` : "/tasks";
 
   return apiClient.get<TaskListResponse>(endpoint);
 }
@@ -57,7 +57,7 @@ export async function listTasks(
  * @returns Task or error
  */
 export async function getTask(taskId: string): Promise<ApiResponse<Task>> {
-  return apiClient.get<Task>(`/todos/${taskId}`);
+  return apiClient.get<Task>(`/tasks/${taskId}`);
 }
 
 /**
@@ -71,7 +71,7 @@ export async function updateTask(
   taskId: string,
   data: TaskUpdate
 ): Promise<ApiResponse<Task>> {
-  return apiClient.put<Task>(`/todos/${taskId}`, data);
+  return apiClient.put<Task>(`/tasks/${taskId}`, data);
 }
 
 /**
@@ -81,7 +81,7 @@ export async function updateTask(
  * @returns Success or error
  */
 export async function deleteTask(taskId: string): Promise<ApiResponse<null>> {
-  return apiClient.delete<null>(`/todos/${taskId}`);
+  return apiClient.delete<null>(`/tasks/${taskId}`);
 }
 
 /**
@@ -91,5 +91,5 @@ export async function deleteTask(taskId: string): Promise<ApiResponse<null>> {
  * @returns Updated task or error
  */
 export async function toggleComplete(taskId: string): Promise<ApiResponse<Task>> {
-  return apiClient.patch<Task>(`/todos/${taskId}/complete`);
+  return apiClient.patch<Task>(`/tasks/${taskId}/complete`);
 }
