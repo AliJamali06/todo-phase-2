@@ -126,3 +126,5 @@ pnpm-debug.log*
 *.tsbuildinfo
 next-env.d.ts
 .claude/settings.local.json
+
+.vercel
