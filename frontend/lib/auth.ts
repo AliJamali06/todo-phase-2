@@ -20,11 +20,15 @@ export const auth = betterAuth({
     minPasswordLength: 8,
   },
   session: {
-    expiresIn: 60 * 60 * 24 * 7, // 7 days
-    updateAge: 60 * 60 * 24, // 1 day
-    cookieCache: {
-      enabled: true,
-      maxAge: 60 * 5, // 5 minutes
+    expiresIn: 60 * 60 * 24 * 7, // 7 days (604800 seconds)
+    updateAge: 60 * 60 * 24, // 1 day - session activity update
+    cookie: {
+      name: "better-auth.session",
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 7, // 7 days - cookie expiration
     },
   },
   trustedOrigins: [
