@@ -25,6 +25,7 @@ class Settings(BaseSettings):
 
     # Security
     better_auth_secret: str = "change-me-in-production"
+    frontend_url: str = "http://localhost:3000"
 
     # CORS
     cors_origins: str = "http://localhost:3000"

@@ -1,18 +1,21 @@
 "use client";
 
 import { createAuthClient } from "better-auth/react";
+import { jwtClient } from "better-auth/client/plugins";
 
 /**
  * Client-side Better Auth configuration.
- * 
+ *
  * Provides React hooks and functions for authentication:
  * - useSession: Get current session state
  * - signIn: Sign in with credentials
  * - signUp: Create new account
  * - signOut: Sign out current user
+ * - $fetch: Authenticated fetch with JWT
  */
 const authClient = createAuthClient({
   baseURL: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+  plugins: [jwtClient()],
 });
 
 /**
@@ -62,12 +65,16 @@ export async function signOutUser() {
 }
 
 /**
- * Get the current session token for API requests.
- * @returns Promise with the token string or null if not authenticated
+ * Get JWT token for API requests.
+ * @returns Promise with the JWT string or null if not authenticated
  */
 export async function getToken(): Promise<string | null> {
-  const session = await authClient.getSession();
-  return session?.data?.session?.token ?? null;
+  try {
+    const response = await authClient.token();
+    return response?.data?.token ?? null;
+  } catch {
+    return null;
+  }
 }
 
 // Export the auth client for advanced usage

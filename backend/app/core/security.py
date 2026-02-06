@@ -1,17 +1,26 @@
 """
 JWT verification service for validating Better Auth tokens.
 
-Verifies JWT tokens issued by Better Auth frontend and extracts user claims.
+Verifies JWT tokens issued by Better Auth frontend using EdDSA (Ed25519) algorithm.
+Fetches and caches JWKS from the frontend for token verification.
 """
+import time
 from datetime import datetime, timezone
 from typing import Optional
 
-from jose import jwt, JWTError
+import httpx
+import jwt
+from jwt import PyJWKClient
 from pydantic import BaseModel
 
 from app.core.config import get_settings
 
 settings = get_settings()
+
+# Cache for JWKS client
+_jwks_client: Optional[PyJWKClient] = None
+_jwks_client_created_at: float = 0
+JWKS_CACHE_TTL = 3600  # 1 hour
 
 
 class JWTPayload(BaseModel):
@@ -22,6 +31,26 @@ class JWTPayload(BaseModel):
     name: Optional[str] = None
     iat: Optional[int] = None  # Issued at
     exp: Optional[int] = None  # Expiration
+
+
+def get_jwks_client() -> PyJWKClient:
+    """
+    Get or create a cached JWKS client for the frontend.
+
+    Returns:
+        PyJWKClient instance for fetching signing keys
+    """
+    global _jwks_client, _jwks_client_created_at
+
+    current_time = time.time()
+
+    # Refresh cache if expired or not initialized
+    if _jwks_client is None or (current_time - _jwks_client_created_at) > JWKS_CACHE_TTL:
+        jwks_url = f"{settings.frontend_url}/api/auth/jwks"
+        _jwks_client = PyJWKClient(jwks_url)
+        _jwks_client_created_at = current_time
+
+    return _jwks_client
 
 
 def verify_jwt_token(token: str) -> Optional[JWTPayload]:
@@ -35,43 +64,35 @@ def verify_jwt_token(token: str) -> Optional[JWTPayload]:
         JWTPayload if valid, None if invalid or expired
     """
     try:
-        # Decode the token using the shared secret
-        # Better Auth uses HS256 by default
+        # Get the signing key from JWKS
+        jwks_client = get_jwks_client()
+        signing_key = jwks_client.get_signing_key_from_jwt(token)
+
+        # Decode and verify the token
         payload = jwt.decode(
             token,
-            settings.better_auth_secret,
-            algorithms=["HS256"],
+            signing_key.key,
+            algorithms=["EdDSA"],
             options={
                 "verify_signature": True,
                 "verify_exp": True,
-                "require_sub": True,
+                "require": ["sub", "exp"],
             },
         )
 
-        # Better Auth JWT structure includes sub (user ID)
-        # and may include email in different locations
+        # Extract claims from payload
         sub = payload.get("sub")
         if not sub:
             return None
 
-        # Try to get email from different possible locations
+        # Get email from payload
         email = payload.get("email")
         if not email:
-            # Better Auth might store user data in a nested structure
-            user_data = payload.get("user", {})
-            if isinstance(user_data, dict):
-                email = user_data.get("email")
-
-        # If still no email, use sub as placeholder
-        if not email:
+            # Fallback if email not in token
             email = f"{sub}@user.local"
 
-        # Get name from payload or user data
+        # Get name from payload
         name = payload.get("name")
-        if not name:
-            user_data = payload.get("user", {})
-            if isinstance(user_data, dict):
-                name = user_data.get("name")
 
         return JWTPayload(
             sub=sub,
@@ -81,8 +102,11 @@ def verify_jwt_token(token: str) -> Optional[JWTPayload]:
             exp=payload.get("exp"),
         )
 
-    except JWTError as e:
-        # Log the error for debugging
+    except jwt.ExpiredSignatureError:
+        if settings.debug:
+            print("JWT verification failed: Token expired")
+        return None
+    except jwt.InvalidTokenError as e:
         if settings.debug:
             print(f"JWT verification failed: {e}")
         return None
